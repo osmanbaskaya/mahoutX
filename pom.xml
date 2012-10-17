@@ -13,7 +13,6 @@
     <server>myserver</server>
     <path>/RecommenderEngine</path>
     <update>true</update>
-    <packagingExcludes>WEB-INF/web.xml</packagingExcludes>
   </configuration>
 </plugin>
        </plugins>
