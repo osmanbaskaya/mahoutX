@@ -51,8 +51,8 @@ public class RecommenderWS {
 	{
 		
 	  try {
- 		  System.out.println("buildItemSimilarityMatrix starts att: "+new Date());
-		  MongoDBDataModel model= new MongoDBDataModel("54.247.188.246",27017,"eniyitavsiye",context + "_ratings",
+ 		  System.out.println("buildModel starts att: "+new Date());
+		  MongoDBDataModel model= new MongoDBDataModel("54.247.188.246",8080,"eniyitavsiye",context + "_ratings",
 				  					true,true,DateFormat.getDateTimeInstance());
 // 		 DataModel model = new FileDataModel (new File("C:/tez/data/movielensDataset/ratingsComma.dat"));
 		  dataModel.put(context, model);
@@ -68,6 +68,7 @@ public class RecommenderWS {
       
 
 	}
+	
 	public static String[]  getRecommendationList(String userId,final String context,long lastRate) throws Exception
 	{
 		try {
