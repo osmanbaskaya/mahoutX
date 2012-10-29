@@ -4,3 +4,10 @@
 *.jar
 *.war
 *.ear
+
+# Binary Files
+/target/
+
+# Backup Files
+*~
+*.swp
