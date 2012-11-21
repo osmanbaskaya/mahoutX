@@ -30,7 +30,7 @@ public class RecommenderWS {
 	private static HashMap<String, Recommender> predictor;
 	private static HashMap<String, FactorizationCachingFactorizer> factorizationCaches;
 
-	private static final String host = "54.246.114.66";
+	private static final String host = "54.246.114.38";
 	private static final int port = 8080;
 
 	private static final String user = "root";
