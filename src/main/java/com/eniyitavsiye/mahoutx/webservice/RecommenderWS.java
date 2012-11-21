@@ -27,11 +27,16 @@ import org.apache.mahout.common.distance.CosineDistanceMeasure;
 @WebService(name = "RecommenderWS")
 public class RecommenderWS {
 
-	public static HashMap<String, Recommender> predictor;
-	public static HashMap<String, FactorizationCachingFactorizer> factorizationCaches;
-	public static final String host = "54.247.188.246";
-	public static final int port = 8080;
-	public static final String database = "eniyitavsiye";
+	private static HashMap<String, Recommender> predictor;
+	private static HashMap<String, FactorizationCachingFactorizer> factorizationCaches;
+
+	private static final String host = "54.246.114.66";
+	private static final int port = 8080;
+
+	private static final String user = "root";
+	private static final String password = "rast0gele1";
+	private static final String database = "eniyitavsiye";
+
 	private static final Logger log = Logger.getLogger(RecommenderWS.class.getName());
 
 	static {
@@ -49,11 +54,11 @@ public class RecommenderWS {
 		try {
 			log.log(Level.INFO, "buildItemSimilarityMatrix starts.");
 			MysqlDataSource dataSource = new MysqlDataSource();
-			dataSource.setServerName("54.247.188.246");
-			dataSource.setUser("root");
-			dataSource.setPassword("rast0gele1");
-			dataSource.setDatabaseName("eniyitavsiye");
-			dataSource.setPort(8080);
+			dataSource.setServerName(host);
+			dataSource.setUser(user);
+			dataSource.setPassword(password);
+			dataSource.setDatabaseName(database);
+			dataSource.setPort(port);
 			dataSource.setAutoReconnect(true);
 			dataSource.setAutoReconnectForPools(true);
 			dataSource.setCachePreparedStatements(true);
@@ -78,7 +83,10 @@ public class RecommenderWS {
 	}
 
 	@WebMethod(operationName = "getRecommendationList")
-	public String[] getRecommendationList(@WebParam(name = "context") String context, @WebParam(name = "userId") long userId) {
+	public String[] getRecommendationList(
+			@WebParam(name = "context") String context, 
+			@WebParam(name = "userId") long userId) {
+
 		try {
 			log.log(Level.INFO, "Entering getRecommendationList for user {0} in context {1}.",
 				new Object[]{userId, context});
@@ -95,8 +103,11 @@ public class RecommenderWS {
 		}
 	}
 
-	@WebMethod(operationName = "getRecommendationList")
-	public Long[] getNearestNeighborList(@WebParam(name = "context") String context, @WebParam(name = "userId") final long userId) {
+	@WebMethod(operationName = "getNearestNeighborList")
+	public Long[] getNearestNeighborList(
+			@WebParam(name = "context") String context, 
+			@WebParam(name = "userId") final long userId) {
+
 		FactorizationCachingFactorizer cachingFactorizer = factorizationCaches.get(context);
 		final Factorization factorization = cachingFactorizer.getCachedFactorization();
 		Iterable<Entry<Long, Integer>> userIDMappings = factorization.getUserIDMappings();
