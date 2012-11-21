@@ -1,4 +1,4 @@
-mahoutX
+MahoutX
 =======
 
-recommendation system
+Recommendation System as a web service using Mahout library.
