@@ -24,24 +24,24 @@ import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.common.distance.CosineDistanceMeasure;
 
-@WebService(serviceName="RecommenderWS")
+@WebService(serviceName = "RecommenderWS")
 public class RecommenderWS {
 
 	private static HashMap<String, Recommender> predictor;
 	private static HashMap<String, FactorizationCachingFactorizer> factorizationCaches;
-
+	private static HashMap<String, Boolean> ongoingTrainingStates;
+	//TODO use property file to load information below
 	private static final String host = "54.246.114.38";
 	private static final int port = 8080;
-
 	private static final String user = "root";
 	private static final String password = "rast0gele1";
 	private static final String database = "eniyitavsiye";
-
 	private static final Logger log = Logger.getLogger(RecommenderWS.class.getName());
 
 	static {
 		predictor = new HashMap<>();
 		factorizationCaches = new HashMap<>();
+		ongoingTrainingStates = new HashMap<>();
 	}
 
 	@WebMethod(operationName = "isModelAlive")
@@ -52,6 +52,7 @@ public class RecommenderWS {
 	@WebMethod(operationName = "buildModel")
 	public String buildModel(@WebParam(name = "context") String context) {
 		try {
+			ongoingTrainingStates.put(context, Boolean.TRUE);
 			log.log(Level.INFO, "buildItemSimilarityMatrix starts.");
 			MysqlDataSource dataSource = new MysqlDataSource();
 			dataSource.setServerName(host);
@@ -79,13 +80,15 @@ public class RecommenderWS {
 		} catch (TasteException ex) {
 			log.log(Level.SEVERE, null, ex);
 			return "error";
+		} finally {
+			ongoingTrainingStates.put(context, Boolean.FALSE);
 		}
 	}
 
 	@WebMethod(operationName = "getRecommendationList")
 	public String[] getRecommendationList(
-			@WebParam(name = "context") String context, 
-			@WebParam(name = "userId") long userId) {
+		@WebParam(name = "context") String context,
+		@WebParam(name = "userId") long userId) {
 
 		try {
 			log.log(Level.INFO, "Entering getRecommendationList for user {0} in context {1}.",
@@ -105,8 +108,8 @@ public class RecommenderWS {
 
 	@WebMethod(operationName = "getNearestNeighborList")
 	public Long[] getNearestNeighborList(
-			@WebParam(name = "context") String context, 
-			@WebParam(name = "userId") final long userId) {
+		@WebParam(name = "context") String context,
+		@WebParam(name = "userId") final long userId) {
 
 		FactorizationCachingFactorizer cachingFactorizer = factorizationCaches.get(context);
 		final Factorization factorization = cachingFactorizer.getCachedFactorization();
@@ -142,5 +145,11 @@ public class RecommenderWS {
 		}
 
 		return (Long[]) topk.retrieve().toArray();
+	}
+
+	@WebMethod(operationName = "isBuildingInProgress")
+	public boolean isBuildingInProgress(@WebParam(name = "context") String context) {
+		Boolean ongoing = ongoingTrainingStates.get(context);
+		return ongoing != null && ongoing;
 	}
 }
