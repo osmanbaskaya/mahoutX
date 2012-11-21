@@ -24,7 +24,7 @@ import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.common.distance.CosineDistanceMeasure;
 
-@WebService(name = "RecommenderWS")
+@WebService(serviceName="RecommenderWS")
 public class RecommenderWS {
 
 	private static HashMap<String, Recommender> predictor;
