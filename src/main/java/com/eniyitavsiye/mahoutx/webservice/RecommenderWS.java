@@ -11,6 +11,7 @@ import java.util.logging.Logger;
 import javax.jws.WebMethod;
 import javax.jws.WebParam;
 import javax.jws.WebService;
+import org.apache.mahout.cf.taste.common.NoSuchItemException;
 import org.apache.mahout.cf.taste.common.NoSuchUserException;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.common.TopK;
@@ -106,8 +107,8 @@ public class RecommenderWS {
 		}
 	}
 
-	@WebMethod(operationName = "getNearestNeighborList")
-	public Long[] getNearestNeighborList(
+	@WebMethod(operationName = "getUserNearestNeighborList")
+	public Long[] getUserNearestNeighborList(
 		@WebParam(name = "context") String context,
 		@WebParam(name = "userId") final long userId) {
 
@@ -129,6 +130,47 @@ public class RecommenderWS {
 			public int compare(Long o1, Long o2) {
 				double sim1 = similarity(userId, o1);
 				double sim2 = similarity(userId, o2);
+
+				if (sim1 < sim2) {
+					return -1;
+				} else if (sim1 > sim2) {
+					return 1;
+				} else {
+					return 0;
+				}
+
+			}
+		});
+		for (Entry<Long, Integer> entry : userIDMappings) {
+			topk.offer(entry.getKey());
+		}
+
+		return (Long[]) topk.retrieve().toArray();
+	}
+
+	@WebMethod(operationName = "getItemNearestNeighborList")
+	public Long[] getItemNearestNeighborList(
+		@WebParam(name = "context") String context,
+		@WebParam(name = "itemId") final long itemId) {
+
+		FactorizationCachingFactorizer cachingFactorizer = factorizationCaches.get(context);
+		final Factorization factorization = cachingFactorizer.getCachedFactorization();
+		Iterable<Entry<Long, Integer>> userIDMappings = factorization.getItemIDMappings();
+
+		TopK<Long> topk = new TopK<>(20, new Comparator<Long>() {
+			private double similarity(long i, long j) {
+				try {
+					return CosineDistanceMeasure.distance(factorization.getItemFeatures(i), factorization.getItemFeatures(j));
+				} catch (NoSuchItemException ex) {
+					log.log(Level.SEVERE, null, ex);
+					throw new RuntimeException(ex);
+				}
+			}
+
+			@Override
+			public int compare(Long o1, Long o2) {
+				double sim1 = similarity(itemId, o1);
+				double sim2 = similarity(itemId, o2);
 
 				if (sim1 < sim2) {
 					return -1;
