@@ -6,10 +6,11 @@ import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorizer;
 
+
 public class FactorizationCachingFactorizer implements Factorizer {
 
 	private Factorization cachedFactorization;
-	private Factorizer delegate;
+	private Factorizer delegate; //asdf
 	
 	public Factorization getCachedFactorization() {
 		return cachedFactorization;
@@ -18,7 +19,6 @@ public class FactorizationCachingFactorizer implements Factorizer {
 	public FactorizationCachingFactorizer(Factorizer delegate) {
 		this.delegate = delegate;
 	}
-
 	@Override
 	public void refresh(Collection<Refreshable> alreadyRefreshed) {
 		delegate.refresh(alreadyRefreshed);
