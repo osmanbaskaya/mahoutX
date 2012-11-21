@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.eniyitavsiye</groupId>
-    <artifactId>MahoutX</artifactId>
+    <artifactId>RecommenderEngine</artifactId>
     <version>0.2</version>
     <packaging>war</packaging>
 
@@ -60,6 +60,7 @@
                 <artifactId>maven-war-plugin</artifactId>
                 <version>2.1.1</version>
                 <configuration>
+                    <warName>RecommenderEngine</warName>
                     <failOnMissingWebXml>false</failOnMissingWebXml>
                 </configuration>
             </plugin>
