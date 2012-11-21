@@ -1,4 +1,4 @@
-package com.eniyitavsiye.mahoutx.svdextension;
+package com.eniyitavsiye.mahoutx.svdextension.online;
 
 import java.util.logging.Logger;
 

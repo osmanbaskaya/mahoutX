@@ -1,5 +1,6 @@
-package com.eniyitavsiye.mahoutx.svdextension;
+package com.eniyitavsiye.mahoutx.svdextension.online;
 
+import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import java.util.Collection;
 import java.util.List;
 
