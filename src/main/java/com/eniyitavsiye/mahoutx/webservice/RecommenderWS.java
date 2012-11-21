@@ -40,8 +40,8 @@ public class RecommenderWS {
 	private static final Logger log = Logger.getLogger(RecommenderWS.class.getName());
 
 	static {
-		predictor = new HashMap<String, Recommender>();
-		factorizationCaches = new HashMap<String, FactorizationCachingFactorizer>();
+		predictor = new HashMap<>();
+		factorizationCaches = new HashMap<>();
 	}
 
 	@WebMethod(operationName = "isModelAlive")
@@ -112,7 +112,7 @@ public class RecommenderWS {
 		final Factorization factorization = cachingFactorizer.getCachedFactorization();
 		Iterable<Entry<Long, Integer>> userIDMappings = factorization.getUserIDMappings();
 
-		TopK<Long> topk = new TopK<Long>(20, new Comparator<Long>() {
+		TopK<Long> topk = new TopK<>(20, new Comparator<Long>() {
 			private double similarity(long i, long j) {
 				try {
 					return CosineDistanceMeasure.distance(factorization.getUserFeatures(i), factorization.getUserFeatures(j));

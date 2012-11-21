@@ -1,5 +1,6 @@
 package com.eniyitavsiye.mahoutx.svdextension.online;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class OnlineSVDRecommenderTest {
@@ -17,7 +18,7 @@ public class OnlineSVDRecommenderTest {
 		long userID = 8000; // new user!
 		
 		
-		log.info("First user is " + userID);
+		log.log(Level.INFO, "First user is {0}", userID);
 		//log.info("Following items to be added: " + Arrays.toString(nonRatedItems));
 		
 		/*

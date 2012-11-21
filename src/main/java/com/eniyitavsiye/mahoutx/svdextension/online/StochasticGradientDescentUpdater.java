@@ -1,7 +1,6 @@
 package com.eniyitavsiye.mahoutx.svdextension.online;
 
 import java.util.Collection;
-
 import org.apache.mahout.cf.taste.common.Refreshable;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;

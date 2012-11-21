@@ -3,7 +3,6 @@ package com.eniyitavsiye.mahoutx.svdextension.online;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import java.util.Collection;
 import java.util.List;
-
 import org.apache.mahout.cf.taste.common.NoSuchUserException;
 import org.apache.mahout.cf.taste.common.Refreshable;
 import org.apache.mahout.cf.taste.common.TasteException;
@@ -35,8 +34,8 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer, UserFactorUpdater userFactorUpdater) throws TasteException {
 		super(dataModel);
 		this.userFactorUpdater = userFactorUpdater;
-		this.itemsOfUsers = new FastByIDMap<FastIDSet>();
-		this.newUserFeatures = new FastByIDMap<double[]>(EXPECTED_NEW_USER_COUNT);
+		this.itemsOfUsers = new FastByIDMap<>();
+		this.newUserFeatures = new FastByIDMap<>(EXPECTED_NEW_USER_COUNT);
 		factorizationCachingFactorizer = new FactorizationCachingFactorizer(factorizer);
 		delegateRecommender = new SVDRecommender(dataModel, factorizationCachingFactorizer);
 		featureCount = factorizationCachingFactorizer.getCachedFactorization().numFeatures();
@@ -60,7 +59,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	}
 
 	public void addPreference(long userID, long itemID, float rat) throws TasteException {
-		double[] features = null;
+		double[] features;
 		Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
 		FastIDSet preferredItems = itemsOfUsers.get(userID);
 		if (preferredItems == null) {
