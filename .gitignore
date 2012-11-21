@@ -1,6 +1,4 @@
-<<<<<<< HEAD
 /target
-=======
 *.class
 
 # Package Files #
@@ -8,10 +6,6 @@
 *.war
 *.ear
 
-# Binary Files
-/target/
-
 # Backup Files
 *~
 *.swp
->>>>>>> origin/master
