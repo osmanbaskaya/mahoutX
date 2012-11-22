@@ -38,7 +38,7 @@ public class StochasticGradientDescentUpdater implements UserFactorUpdater {
 	
 	@Override
 	public void refresh(Collection<Refreshable> alreadyRefreshed) {
-		// nothing to do here (netbeans git deneme) //osman
+		// nothing to do here
 	}
 
 }
