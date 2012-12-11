@@ -85,7 +85,7 @@ public class RecommenderWS {
 			ongoingTrainingStates.put(context, Boolean.FALSE);
 		}
 	}
-
+  
 	@WebMethod(operationName = "getRecommendationList")
 	public String[] getRecommendationList(
 		@WebParam(name = "context") String context,
