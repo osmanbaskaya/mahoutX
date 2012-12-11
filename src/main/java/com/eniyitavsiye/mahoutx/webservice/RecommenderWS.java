@@ -86,7 +86,9 @@ public class RecommenderWS {
 		}
 	}
   
-	@WebMethod(operationName = "getRecommendationList")
+	
+        
+        @WebMethod(operationName = "getRecommendationList")
 	public String[] getRecommendationList(
 		@WebParam(name = "context") String context,
 		@WebParam(name = "userId") long userId) {
