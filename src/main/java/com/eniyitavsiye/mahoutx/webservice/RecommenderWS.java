@@ -1,7 +1,8 @@
 package com.eniyitavsiye.mahoutx.webservice;
 
+import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
+import com.eniyitavsiye.mahoutx.db.DBUtil;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
-import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +16,7 @@ import org.apache.mahout.cf.taste.common.NoSuchItemException;
 import org.apache.mahout.cf.taste.common.NoSuchUserException;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.common.TopK;
+import org.apache.mahout.cf.taste.impl.common.FastIDSet;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ConnectionPoolDataSource;
 import org.apache.mahout.cf.taste.impl.model.jdbc.MySQLJDBCDataModel;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
@@ -31,12 +33,7 @@ public class RecommenderWS {
 	private static HashMap<String, Recommender> predictor;
 	private static HashMap<String, FactorizationCachingFactorizer> factorizationCaches;
 	private static HashMap<String, Boolean> ongoingTrainingStates;
-	//TODO use property file to load information below
-	private static final String host = "54.246.114.38";
-	private static final int port = 8080;
-	private static final String user = "root";
-	private static final String password = "rast0gele1";
-	private static final String database = "eniyitavsiye";
+	
 	private static final Logger log = Logger.getLogger(RecommenderWS.class.getName());
 
 	static {
@@ -45,7 +42,7 @@ public class RecommenderWS {
 		ongoingTrainingStates = new HashMap<>();
 	}
 
-	@WebMethod(operationName = "isModelAlive")
+        	@WebMethod(operationName = "isModelAlive")
 	public boolean isModelAlive(@WebParam(name = "context") String context) {
 		return predictor.containsKey(context);
 	}
@@ -53,27 +50,16 @@ public class RecommenderWS {
 	@WebMethod(operationName = "buildModel")
 	public String buildModel(@WebParam(name = "context") String context) {
 		try {
-			ongoingTrainingStates.put(context, Boolean.TRUE);
+    			ongoingTrainingStates.put(context, Boolean.TRUE);
 			log.log(Level.INFO, "buildItemSimilarityMatrix starts.");
-			MysqlDataSource dataSource = new MysqlDataSource();
-			dataSource.setServerName(host);
-			dataSource.setUser(user);
-			dataSource.setPassword(password);
-			dataSource.setDatabaseName(database);
-			dataSource.setPort(port);
-			dataSource.setAutoReconnect(true);
-			dataSource.setAutoReconnectForPools(true);
-			dataSource.setCachePreparedStatements(true);
-			dataSource.setCachePrepStmts(true);
-			dataSource.setCacheResultSetMetadata(true);
-			dataSource.setAlwaysSendSetIsolation(false);
-			dataSource.setElideSetAutoCommits(true);
-			MySQLJDBCDataModel model = new MySQLJDBCDataModel(new ConnectionPoolDataSource(dataSource), context, "user_id", "item_id", "rating", null);
+			DBUtil dbUtil= new DBUtil();
+			MySQLJDBCDataModel model = new MySQLJDBCDataModel(new ConnectionPoolDataSource
+                                    (dbUtil.getDataSource()), context+"_rating", "user_id", "item_id", "rating", null);
 			ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(model);
 			FactorizationCachingFactorizer cachingFactorizer = new FactorizationCachingFactorizer(new ALSWRFactorizer(reloadModel, 20, 0.001, 40));
 			Recommender recommender = new SVDRecommender(reloadModel, cachingFactorizer);
 			log.log(Level.INFO, "Data loading and training done.");
-
+                        
 			predictor.put(context, recommender);
 			factorizationCaches.put(context, cachingFactorizer);
 
@@ -86,7 +72,36 @@ public class RecommenderWS {
 		}
 	}
   
-	
+	 @WebMethod(operationName = "getRecommendationListPaginated")
+	public String[] getRecommendationListPaginated(
+		@WebParam(name = "context") String context,
+		@WebParam(name = "userId") long userId,
+                @WebParam(name = "tagstring") String tagstring,
+                @WebParam(name = "offset" ) int offset,
+                @WebParam(name = "length") int length) {
+
+		try {
+			log.log(Level.INFO, "Entering getRecommendationList for user {0} in context {1}.",
+				new Object[]{userId, context});
+                        DBUtil dbUtil =new DBUtil();
+                        List<Long> specificItemIDsList = dbUtil.getItems(context,tagstring.split(","));
+                        FastIDSet specificItemIDs = new FastIDSet(specificItemIDsList.size());
+                        for (Long id : specificItemIDsList) {
+                                specificItemIDs.add(id);
+                        }
+                        FilterIDsRescorer filterIDsRescorer = new FilterIDsRescorer(specificItemIDs);
+                        List<RecommendedItem> recommendations = predictor.get(context).recommend(userId, offset+length,filterIDsRescorer);
+			String[] list = new String[Math.min(length,recommendations.size())];
+			for (int i = offset; i <list.length+offset; i++) {
+				RecommendedItem recommendedItem = recommendations.get(i);
+				list[i-offset] = recommendedItem.getItemID() + ";" + recommendedItem.getValue();
+			}
+			return list;
+		} catch (TasteException ex) {
+			log.log(Level.SEVERE, null, ex);
+			return new String[0];
+		}
+	}
         
         @WebMethod(operationName = "getRecommendationList")
 	public String[] getRecommendationList(
@@ -190,6 +205,7 @@ public class RecommenderWS {
 
 		return (Long[]) topk.retrieve().toArray();
 	}
+        
 
 	@WebMethod(operationName = "isBuildingInProgress")
 	public boolean isBuildingInProgress(@WebParam(name = "context") String context) {
