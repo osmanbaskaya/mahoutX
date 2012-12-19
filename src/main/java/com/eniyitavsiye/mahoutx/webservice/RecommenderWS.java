@@ -30,186 +30,189 @@ import org.apache.mahout.common.distance.CosineDistanceMeasure;
 @WebService(serviceName = "RecommenderWS")
 public class RecommenderWS {
 
-	private static HashMap<String, Recommender> predictor;
-	private static HashMap<String, FactorizationCachingFactorizer> factorizationCaches;
-	private static HashMap<String, Boolean> ongoingTrainingStates;
-	
-	private static final Logger log = Logger.getLogger(RecommenderWS.class.getName());
+    private static HashMap<String, Recommender> predictor;
+    private static HashMap<String, FactorizationCachingFactorizer> factorizationCaches;
+    private static HashMap<String, Boolean> ongoingTrainingStates;
+    private static final Logger log = Logger.getLogger(RecommenderWS.class.getName());
 
-	static {
-		predictor = new HashMap<>();
-		factorizationCaches = new HashMap<>();
-		ongoingTrainingStates = new HashMap<>();
-	}
+    static {
+        predictor = new HashMap<>();
+        factorizationCaches = new HashMap<>();
+        ongoingTrainingStates = new HashMap<>();
+    }
 
-        	@WebMethod(operationName = "isModelAlive")
-	public boolean isModelAlive(@WebParam(name = "context") String context) {
-		return predictor.containsKey(context);
-	}
+    @WebMethod(operationName = "isModelAlive")
+    public boolean isModelAlive(@WebParam(name = "context") String context) {
+        return predictor.containsKey(context);
+    }
 
-	@WebMethod(operationName = "buildModel")
-	public String buildModel(@WebParam(name = "context") String context) {
-		try {
-    			ongoingTrainingStates.put(context, Boolean.TRUE);
-			log.log(Level.INFO, "buildItemSimilarityMatrix starts.");
-			DBUtil dbUtil= new DBUtil();
-			LimitMySQLJDBCDataModel model = new LimitMySQLJDBCDataModel(new ConnectionPoolDataSource
-                                    (dbUtil.getDataSource()), context+"_rating", "user_id", "item_id", "rating", null);
-			ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(model);
-			FactorizationCachingFactorizer cachingFactorizer = new FactorizationCachingFactorizer(new ALSWRFactorizer(reloadModel, 15, 0.001, 15));
-			Recommender recommender = new SVDRecommender(reloadModel, cachingFactorizer);
-			log.log(Level.INFO, "Data loading and training done.");
-                        
-			predictor.put(context, recommender);
-			factorizationCaches.put(context, cachingFactorizer);
+    @WebMethod(operationName = "buildModel")
+    public String buildModel(@WebParam(name = "context") String context) {
+        try {
+            ongoingTrainingStates.put(context, Boolean.TRUE);
+            log.log(Level.INFO, "buildItemSimilarityMatrix starts.");
+            DBUtil dbUtil = new DBUtil();
+            LimitMySQLJDBCDataModel model = new LimitMySQLJDBCDataModel(new ConnectionPoolDataSource(dbUtil.getDataSource()), context + "_rating", "user_id", "item_id", "rating", null);
+            ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(model);
+            FactorizationCachingFactorizer cachingFactorizer = new FactorizationCachingFactorizer(new ALSWRFactorizer(reloadModel, 15, 0.001, 15));
+            Recommender recommender = new SVDRecommender(reloadModel, cachingFactorizer);
+            log.log(Level.INFO, "Data loading and training done.");
 
-			return "done";
-		} catch (TasteException ex) {
-			log.log(Level.SEVERE, null, ex);
-			return "error";
-		} finally {
-			ongoingTrainingStates.put(context, Boolean.FALSE);
-		}
-	}
-  
-	 @WebMethod(operationName = "getRecommendationListPaginated")
-	public String[] getRecommendationListPaginated(
-		@WebParam(name = "context") String context,
-		@WebParam(name = "userId") long userId,
-                @WebParam(name = "tagstring") String tagstring,
-                @WebParam(name = "offset" ) int offset,
-                @WebParam(name = "length") int length) {
+            predictor.put(context, recommender);
+            factorizationCaches.put(context, cachingFactorizer);
 
-		try {
-			log.log(Level.INFO, "Entering getRecommendationList for user {0} in context {1}.",
-				new Object[]{userId, context});
-                        DBUtil dbUtil =new DBUtil();
-                        List<Long> specificItemIDsList = dbUtil.getItems(context,tagstring.split(","));
-                        FastIDSet specificItemIDs = new FastIDSet(specificItemIDsList.size());
-                        for (Long id : specificItemIDsList) {
-                                specificItemIDs.add(id);
-                        }
-                        FilterIDsRescorer filterIDsRescorer = new FilterIDsRescorer(specificItemIDs);
-                        List<RecommendedItem> recommendations = predictor.get(context).recommend(userId, offset+length,filterIDsRescorer);
-			String[] list = new String[Math.min(length,recommendations.size())];
-			for (int i = offset; i <Math.min(list.length+offset,recommendations.size()); i++) {
-				RecommendedItem recommendedItem = recommendations.get(i);
-				list[i-offset] = recommendedItem.getItemID() + ";" + recommendedItem.getValue();
-			}
-			return list;
-		} catch (TasteException ex) {
-			log.log(Level.SEVERE, null, ex);
-			return new String[0];
-		}
-	}
-        
-        @WebMethod(operationName = "getRecommendationList")
-	public String[] getRecommendationList(
-		@WebParam(name = "context") String context,
-		@WebParam(name = "userId") long userId) {
+            return "done";
+        } catch (TasteException ex) {
+            log.log(Level.SEVERE, null, ex);
+            return "error";
+        } finally {
+            ongoingTrainingStates.put(context, Boolean.FALSE);
+        }
+    }
 
-		try {
-			log.log(Level.INFO, "Entering getRecommendationList for user {0} in context {1}.",
-				new Object[]{userId, context});
-			List<RecommendedItem> recommendations = predictor.get(context).recommend(userId, 20);
-			String[] list = new String[recommendations.size()];
-			for (int i = 0; i < recommendations.size(); i++) {
-				RecommendedItem recommendedItem = recommendations.get(i);
-				list[i] = recommendedItem.getItemID() + ";" + recommendedItem.getValue();
-			}
-			return list;
-		} catch (TasteException ex) {
-			log.log(Level.SEVERE, null, ex);
-			return new String[0];
-		}
-	}
+    @WebMethod(operationName = "getRecommendationListPaginated")
+    public String[] getRecommendationListPaginated(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "userId") long userId,
+            @WebParam(name = "tagstring") String tagstring,
+            @WebParam(name = "offset") int offset,
+            @WebParam(name = "length") int length) {
 
-	@WebMethod(operationName = "getUserNearestNeighborList")
-	public Long[] getUserNearestNeighborList(
-		@WebParam(name = "context") String context,
-		@WebParam(name = "userId") final long userId) {
+        try {
+            log.log(Level.INFO, "Entering getRecommendationList for user {0} in context {1}.",
+                    new Object[]{userId, context});
+            List<RecommendedItem> recommendations = null;
+            if (!tagstring.equals("")) {
+                DBUtil dbUtil = new DBUtil();
+                List<Long> specificItemIDsList = dbUtil.getItems(context, tagstring.split(","));
+                FastIDSet specificItemIDs = new FastIDSet(specificItemIDsList.size());
+                for (Long id : specificItemIDsList) {
+                    specificItemIDs.add(id);
+                }
+                FilterIDsRescorer filterIDsRescorer = new FilterIDsRescorer(specificItemIDs);
+                recommendations = predictor.get(context).recommend(userId, offset + length, filterIDsRescorer);
+            } else {
+                recommendations = predictor.get(context).recommend(userId, offset + length);
+            }
+            
+            String[] list = new String[Math.min(length, recommendations.size())];
+            for (int i = offset; i < Math.min(list.length + offset, recommendations.size()); i++) {
+                RecommendedItem recommendedItem = recommendations.get(i);
+                list[i - offset] = recommendedItem.getItemID() + ";" + recommendedItem.getValue();
+            }
+            return list;
+        } catch (TasteException ex) {
+            log.log(Level.SEVERE, null, ex);
+            return new String[0];
+        }
+    }
 
-		FactorizationCachingFactorizer cachingFactorizer = factorizationCaches.get(context);
-		final Factorization factorization = cachingFactorizer.getCachedFactorization();
-		Iterable<Entry<Long, Integer>> userIDMappings = factorization.getUserIDMappings();
+    @WebMethod(operationName = "getRecommendationList")
+    public String[] getRecommendationList(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "userId") long userId) {
 
-		TopK<Long> topk = new TopK<>(20, new Comparator<Long>() {
-			private double similarity(long i, long j) {
-				try {
-					return CosineDistanceMeasure.distance(factorization.getUserFeatures(i), factorization.getUserFeatures(j));
-				} catch (NoSuchUserException ex) {
-					log.log(Level.SEVERE, null, ex);
-					throw new RuntimeException(ex);
-				}
-			}
+        try {
+            log.log(Level.INFO, "Entering getRecommendationList for user {0} in context {1}.",
+                    new Object[]{userId, context});
+            List<RecommendedItem> recommendations = predictor.get(context).recommend(userId, 20);
+            String[] list = new String[recommendations.size()];
+            for (int i = 0; i < recommendations.size(); i++) {
+                RecommendedItem recommendedItem = recommendations.get(i);
+                list[i] = recommendedItem.getItemID() + ";" + recommendedItem.getValue();
+            }
+            return list;
+        } catch (TasteException ex) {
+            log.log(Level.SEVERE, null, ex);
+            return new String[0];
+        }
+    }
 
-			@Override
-			public int compare(Long o1, Long o2) {
-				double sim1 = similarity(userId, o1);
-				double sim2 = similarity(userId, o2);
+    @WebMethod(operationName = "getUserNearestNeighborList")
+    public Long[] getUserNearestNeighborList(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "userId") final long userId) {
 
-				if (sim1 < sim2) {
-					return -1;
-				} else if (sim1 > sim2) {
-					return 1;
-				} else {
-					return 0;
-				}
+        FactorizationCachingFactorizer cachingFactorizer = factorizationCaches.get(context);
+        final Factorization factorization = cachingFactorizer.getCachedFactorization();
+        Iterable<Entry<Long, Integer>> userIDMappings = factorization.getUserIDMappings();
 
-			}
-		});
-		for (Entry<Long, Integer> entry : userIDMappings) {
-			topk.offer(entry.getKey());
-		}
+        TopK<Long> topk = new TopK<>(20, new Comparator<Long>() {
+            private double similarity(long i, long j) {
+                try {
+                    return CosineDistanceMeasure.distance(factorization.getUserFeatures(i), factorization.getUserFeatures(j));
+                } catch (NoSuchUserException ex) {
+                    log.log(Level.SEVERE, null, ex);
+                    throw new RuntimeException(ex);
+                }
+            }
 
-		return (Long[]) topk.retrieve().toArray();
-	}
+            @Override
+            public int compare(Long o1, Long o2) {
+                double sim1 = similarity(userId, o1);
+                double sim2 = similarity(userId, o2);
 
-	@WebMethod(operationName = "getItemNearestNeighborList")
-	public Long[] getItemNearestNeighborList(
-		@WebParam(name = "context") String context,
-		@WebParam(name = "itemId") final long itemId) {
+                if (sim1 < sim2) {
+                    return -1;
+                } else if (sim1 > sim2) {
+                    return 1;
+                } else {
+                    return 0;
+                }
 
-		FactorizationCachingFactorizer cachingFactorizer = factorizationCaches.get(context);
-		final Factorization factorization = cachingFactorizer.getCachedFactorization();
-		Iterable<Entry<Long, Integer>> userIDMappings = factorization.getItemIDMappings();
+            }
+        });
+        for (Entry<Long, Integer> entry : userIDMappings) {
+            topk.offer(entry.getKey());
+        }
 
-		TopK<Long> topk = new TopK<>(20, new Comparator<Long>() {
-			private double similarity(long i, long j) {
-				try {
-					return CosineDistanceMeasure.distance(factorization.getItemFeatures(i), factorization.getItemFeatures(j));
-				} catch (NoSuchItemException ex) {
-					log.log(Level.SEVERE, null, ex);
-					throw new RuntimeException(ex);
-				}
-			}
+        return (Long[]) topk.retrieve().toArray();
+    }
 
-			@Override
-			public int compare(Long o1, Long o2) {
-				double sim1 = similarity(itemId, o1);
-				double sim2 = similarity(itemId, o2);
+    @WebMethod(operationName = "getItemNearestNeighborList")
+    public Long[] getItemNearestNeighborList(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "itemId") final long itemId) {
 
-				if (sim1 < sim2) {
-					return -1;
-				} else if (sim1 > sim2) {
-					return 1;
-				} else {
-					return 0;
-				}
+        FactorizationCachingFactorizer cachingFactorizer = factorizationCaches.get(context);
+        final Factorization factorization = cachingFactorizer.getCachedFactorization();
+        Iterable<Entry<Long, Integer>> userIDMappings = factorization.getItemIDMappings();
 
-			}
-		});
-		for (Entry<Long, Integer> entry : userIDMappings) {
-			topk.offer(entry.getKey());
-		}
+        TopK<Long> topk = new TopK<>(20, new Comparator<Long>() {
+            private double similarity(long i, long j) {
+                try {
+                    return CosineDistanceMeasure.distance(factorization.getItemFeatures(i), factorization.getItemFeatures(j));
+                } catch (NoSuchItemException ex) {
+                    log.log(Level.SEVERE, null, ex);
+                    throw new RuntimeException(ex);
+                }
+            }
 
-		return (Long[]) topk.retrieve().toArray();
-	}
-        
+            @Override
+            public int compare(Long o1, Long o2) {
+                double sim1 = similarity(itemId, o1);
+                double sim2 = similarity(itemId, o2);
 
-	@WebMethod(operationName = "isBuildingInProgress")
-	public boolean isBuildingInProgress(@WebParam(name = "context") String context) {
-		Boolean ongoing = ongoingTrainingStates.get(context);
-		return ongoing != null && ongoing;
-	}
+                if (sim1 < sim2) {
+                    return -1;
+                } else if (sim1 > sim2) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+
+            }
+        });
+        for (Entry<Long, Integer> entry : userIDMappings) {
+            topk.offer(entry.getKey());
+        }
+
+        return (Long[]) topk.retrieve().toArray();
+    }
+
+    @WebMethod(operationName = "isBuildingInProgress")
+    public boolean isBuildingInProgress(@WebParam(name = "context") String context) {
+        Boolean ongoing = ongoingTrainingStates.get(context);
+        return ongoing != null && ongoing;
+    }
 }
