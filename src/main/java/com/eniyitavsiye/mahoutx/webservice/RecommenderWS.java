@@ -1,6 +1,7 @@
 package com.eniyitavsiye.mahoutx.webservice;
 
 import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
+import com.eniyitavsiye.mahoutx.common.LimitMySQLJDBCDataModel;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import java.util.Comparator;
@@ -18,7 +19,6 @@ import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.common.TopK;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ConnectionPoolDataSource;
-import org.apache.mahout.cf.taste.impl.model.jdbc.MySQLJDBCDataModel;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
 import org.apache.mahout.cf.taste.impl.recommender.svd.ALSWRFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
@@ -53,7 +53,7 @@ public class RecommenderWS {
     			ongoingTrainingStates.put(context, Boolean.TRUE);
 			log.log(Level.INFO, "buildItemSimilarityMatrix starts.");
 			DBUtil dbUtil= new DBUtil();
-			MySQLJDBCDataModel model = new MySQLJDBCDataModel(new ConnectionPoolDataSource
+			LimitMySQLJDBCDataModel model = new LimitMySQLJDBCDataModel(new ConnectionPoolDataSource
                                     (dbUtil.getDataSource()), context+"_rating", "user_id", "item_id", "rating", null);
 			ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(model);
 			FactorizationCachingFactorizer cachingFactorizer = new FactorizationCachingFactorizer(new ALSWRFactorizer(reloadModel, 20, 0.001, 40));
