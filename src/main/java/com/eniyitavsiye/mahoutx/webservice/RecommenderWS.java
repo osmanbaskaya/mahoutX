@@ -56,7 +56,7 @@ public class RecommenderWS {
 			LimitMySQLJDBCDataModel model = new LimitMySQLJDBCDataModel(new ConnectionPoolDataSource
                                     (dbUtil.getDataSource()), context+"_rating", "user_id", "item_id", "rating", null);
 			ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(model);
-			FactorizationCachingFactorizer cachingFactorizer = new FactorizationCachingFactorizer(new ALSWRFactorizer(reloadModel, 20, 0.001, 40));
+			FactorizationCachingFactorizer cachingFactorizer = new FactorizationCachingFactorizer(new ALSWRFactorizer(reloadModel, 15, 0.001, 15));
 			Recommender recommender = new SVDRecommender(reloadModel, cachingFactorizer);
 			log.log(Level.INFO, "Data loading and training done.");
                         
