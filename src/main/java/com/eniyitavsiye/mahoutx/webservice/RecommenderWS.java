@@ -92,7 +92,7 @@ public class RecommenderWS {
                         FilterIDsRescorer filterIDsRescorer = new FilterIDsRescorer(specificItemIDs);
                         List<RecommendedItem> recommendations = predictor.get(context).recommend(userId, offset+length,filterIDsRescorer);
 			String[] list = new String[Math.min(length,recommendations.size())];
-			for (int i = offset; i <list.length+offset; i++) {
+			for (int i = offset; i <Math.min(list.length+offset,recommendations.size()); i++) {
 				RecommendedItem recommendedItem = recommendations.get(i);
 				list[i-offset] = recommendedItem.getItemID() + ";" + recommendedItem.getValue();
 			}
