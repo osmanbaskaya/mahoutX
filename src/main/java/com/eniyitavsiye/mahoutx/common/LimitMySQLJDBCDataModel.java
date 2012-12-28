@@ -78,7 +78,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 	      do{
 	    	  counter=0;
 	    	  query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn + " FROM " + preferenceTable
-		              + " ORDER BY " + userIDColumn + ", " + itemIDColumn + " LIMIT "+offset+","+limit;
+		              + " WHERE id > "+offset+" AND id <= "+(offset+limit)+" ORDER BY " + userIDColumn + ", " + itemIDColumn;
 		      log.info("Executing SQL query: {}", query);
 			  rs = stmt.executeQuery(query);
 		      log.info("query executed");
