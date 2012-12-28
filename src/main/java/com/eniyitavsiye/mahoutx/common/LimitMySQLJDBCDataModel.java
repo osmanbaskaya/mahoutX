@@ -96,7 +96,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 		        result.put(currentUserID, new GenericUserPreferenceArray(currentPrefs));
 		      }
 		      offset += limit;
-	      }while(counter==limit);
+	      }while(counter!=0);
 
 	      return result;
 
