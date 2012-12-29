@@ -109,7 +109,7 @@ public class RecommenderWS {
         }
     }
 
-    @WebMethod(operationName = "getRecommendationList")
+    @WebMethod(operationName = "estimatePreference")
     public double estimatePreference(
             @WebParam(name = "context") String context,
             @WebParam(name = "userId") long userId,
