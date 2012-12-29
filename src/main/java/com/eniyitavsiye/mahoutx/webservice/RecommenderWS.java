@@ -115,7 +115,7 @@ public class RecommenderWS {
             @WebParam(name = "userId") long userId,
             @WebParam(name = "itemId") long itemId) throws Exception {
         try {
-           return predictor.get(context).estimatePreference(userId, itemId);
+            return predictor.get(context).estimatePreference(userId, itemId);
         } catch (Exception ex) {
             log.log(Level.SEVERE, null, ex);
             throw ex;
@@ -141,6 +141,22 @@ public class RecommenderWS {
             log.log(Level.SEVERE, null, ex);
             return new String[0];
         }
+    }
+
+    @WebMethod(operationName = "getUserFeatures")
+    public double[] getUserFeatures(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "userId") final long userId) throws Exception {
+        try {
+            FactorizationCachingFactorizer cachingFactorizer = factorizationCaches.get(context);
+            final Factorization factorization = cachingFactorizer.getCachedFactorization();
+            double[] features= factorization.getUserFeatures(userId);
+            return features;
+        } catch (Exception ex) {
+            log.log(Level.SEVERE, null, ex);
+            throw ex;
+        }
+
     }
 
     @WebMethod(operationName = "getUserNearestNeighborList")
