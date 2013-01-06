@@ -24,6 +24,7 @@ import org.apache.mahout.cf.taste.impl.model.jdbc.ConnectionPoolDataSource;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.impl.recommender.svd.SVDRecommender;
+import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.common.distance.CosineDistanceMeasure;
@@ -196,7 +197,14 @@ public class RecommenderWS {
 				UserComparison comparison = new UserComparison();
         TopK<Long> topk = new TopK<>(20, comparison);
         for (Long id : userIds) {
-            topk.offer(id);
+					//try {
+						//if (predictor.get(context).getDataModel().getPreferencesFromUser(id).length() > 0) {
+							topk.offer(id);
+						//}
+					//} catch (TasteException ex) {
+						//Logger.getLogger(RecommenderWS.class.getName()).log(Level.SEVERE, null, ex);
+						//throw new RuntimeException(ex);
+					//}
         }
 
         List<Long> top = topk.retrieve();
@@ -207,6 +215,20 @@ public class RecommenderWS {
 				}
 				return topWithSim;
     }
+
+    @WebMethod(operationName = "hasUserRatings")
+    public boolean hasUserRatings(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "userId") final long userId) {
+			try {
+				return predictor.get(context).getDataModel().getPreferencesFromUser(userId).length() != 0;
+			} catch (TasteException ex) {
+				Logger.getLogger(RecommenderWS.class.getName()).log(Level.SEVERE, null, ex);
+				return false;
+			}
+		
+		}
+
 
     @WebMethod(operationName = "getItemNearestNeighborList")
     public Long[] getItemNearestNeighborList(
@@ -255,4 +277,18 @@ public class RecommenderWS {
         return ongoing != null && ongoing;
     }
 
+		public static void main(String[] args) {
+			/*
+
+			DataModel reloadModel = 
+            FactorizationCachingFactorizer cachingFactorizer = new FactorizationCachingFactorizer(new ParallelArraysSGDFactorizer(reloadModel, 25, 25));
+            Recommender recommender = new SVDRecommender(reloadModel, cachingFactorizer);
+            log.log(Level.INFO, "Data loading and training done.");
+
+            predictor.put(context, recommender);
+            factorizationCaches.put(context, cachingFactorizer);
+						*/
+		
+		}
+		
 }
