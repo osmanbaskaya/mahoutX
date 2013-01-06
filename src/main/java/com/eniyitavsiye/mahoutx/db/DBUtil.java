@@ -59,7 +59,9 @@ public class DBUtil {
         Connection con = datasource.getConnection();
 				String sql = "select id from auth_user where id not in "
 										+ "(select followee_id from " + context + "_follow "
-												+ "where " + id + " = follower_id)";
+												+ "where " + id + " = follower_id) and id in "
+	   								+ "(select distinct user_id from " + context + "_rating) "
+	  								+ "and id <> " + id;
 
         PreparedStatement prest = con.prepareStatement(sql);
         ResultSet rs = prest.executeQuery();
@@ -123,7 +125,7 @@ public class DBUtil {
 
 		public static void testUsersNotFollowing() {
 			DBUtil util = new DBUtil();
-			final Collection<Long> usersNotFollowing = util.getUsersNotFollowing("movie", 6052);
+			final Collection<Long> usersNotFollowing = util.getUsersNotFollowing("movie", 6044);
 			System.out.println(usersNotFollowing);
 			System.out.println(usersNotFollowing.contains(6044L));
 			System.out.println(usersNotFollowing.contains(6043L));
