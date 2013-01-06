@@ -11,6 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -29,9 +30,55 @@ public class DBUtil {
     private static final String database = "eniyitavsiye";
     private static final Logger log = Logger.getLogger(DBUtil.class.getName());
 
-    public List<Long> getItems(String context, String[] tags)  {
+		public Collection<Long> getAuthUsers() {
+
+			try {
+        MysqlDataSource datasource = getDataSource();
+        Connection con = datasource.getConnection();
+				String sql = "select id from auth_user";
+
+        PreparedStatement prest = con.prepareStatement(sql);
+        ResultSet rs = prest.executeQuery();
+        ArrayList<Long> items=new ArrayList<>();
+        while (rs.next()) {
+            items.add(new Long(rs.getString(1)));
+        }
+        prest.close();
+        con.close();
+				return items;
+			} catch (SQLException | NumberFormatException ex) {
+				log.log(Level.SEVERE, null, ex);
+				//FIXME throw exception instead of returning empty list.
+				throw new RuntimeException(ex);
+			}
+		}
+
+		public Collection<Long> getUsersNotFollowing(String context, long id) {
+			try {
+        MysqlDataSource datasource = getDataSource();
+        Connection con = datasource.getConnection();
+				String sql = "select id from auth_user where id not in "
+										+ "(select followee_id from " + context + "_follow "
+												+ "where " + id + " = follower_id)";
+
+        PreparedStatement prest = con.prepareStatement(sql);
+        ResultSet rs = prest.executeQuery();
+        ArrayList<Long> users = new ArrayList<>();
+        while (rs.next()) {
+            users.add(new Long(rs.getString(1)));
+        }
+        prest.close();
+        con.close();
+				return users;
+			} catch (SQLException | NumberFormatException ex) {
+				log.log(Level.SEVERE, null, ex);
+				throw new RuntimeException(ex);
+			}
+		}
+
+    public Collection<Long> getItems(String context, String[] tags)  {
         
-        try{
+			try{
         MysqlDataSource datasource = getDataSource();
         Connection con = datasource.getConnection();
          
@@ -43,17 +90,18 @@ public class DBUtil {
         } 
         PreparedStatement prest = con.prepareStatement(sql);
         ResultSet rs = prest.executeQuery();
-        ArrayList<Long> items=new ArrayList<Long>();
+        ArrayList<Long> items=new ArrayList<>();
         while (rs.next()) {
             items.add(new Long(rs.getString(1)));
         }
         prest.close();
         con.close();
-        return items;
-        } catch (Exception ex) {
-            log.log(Level.SEVERE, null, ex);
-            return new ArrayList<Long>();
-        }
+				return items;
+			} catch (SQLException | NumberFormatException ex) {
+				log.log(Level.SEVERE, null, ex);
+				//FIXME throw exception instead of returning empty list.
+				return new ArrayList<>();
+			}
     }
 
     public MysqlDataSource getDataSource() {
@@ -72,4 +120,13 @@ public class DBUtil {
         dataSource.setElideSetAutoCommits(true);
         return dataSource;
     }
+
+		public static void testUsersNotFollowing() {
+			DBUtil util = new DBUtil();
+			final Collection<Long> usersNotFollowing = util.getUsersNotFollowing("movie", 6052);
+			System.out.println(usersNotFollowing);
+			System.out.println(usersNotFollowing.contains(6044L));
+			System.out.println(usersNotFollowing.contains(6043L));
+		}
+
 }
