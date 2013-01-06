@@ -4,6 +4,7 @@ import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
 import com.eniyitavsiye.mahoutx.common.LimitMySQLJDBCDataModel;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -17,13 +18,10 @@ import org.apache.mahout.cf.taste.common.NoSuchItemException;
 import org.apache.mahout.cf.taste.common.NoSuchUserException;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.common.TopK;
-import org.apache.mahout.cf.taste.eval.RecommenderEvaluator;
 import org.apache.mahout.cf.taste.example.kddcup.track1.svd.ParallelArraysSGDFactorizer;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
-import org.apache.mahout.cf.taste.impl.eval.AverageAbsoluteDifferenceRecommenderEvaluator;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ConnectionPoolDataSource;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
-import org.apache.mahout.cf.taste.impl.recommender.svd.ALSWRFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.impl.recommender.svd.SVDRecommender;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
@@ -87,7 +85,7 @@ public class RecommenderWS {
             List<RecommendedItem> recommendations = null;
             if (!tagstring.equals("")) {
                 DBUtil dbUtil = new DBUtil();
-                List<Long> specificItemIDsList = dbUtil.getItems(context, tagstring.split(","));
+                Collection<Long> specificItemIDsList = dbUtil.getItems(context, tagstring.split(","));
                 FastIDSet specificItemIDs = new FastIDSet(specificItemIDsList.size());
                 for (Long id : specificItemIDsList) {
                     specificItemIDs.add(id);
@@ -161,15 +159,16 @@ public class RecommenderWS {
     }
 
     @WebMethod(operationName = "getUserNearestNeighborList")
-    public Long[] getUserNearestNeighborList(
+    public String[] getUserNearestNeighborList(
             @WebParam(name = "context") String context,
             @WebParam(name = "userId") final long userId) {
 
         FactorizationCachingFactorizer cachingFactorizer = factorizationCaches.get(context);
         final Factorization factorization = cachingFactorizer.getCachedFactorization();
-        Iterable<Entry<Long, Integer>> userIDMappings = factorization.getUserIDMappings();
 
-        TopK<Long> topk = new TopK<>(20, new Comparator<Long>() {
+				Collection<Long> userIds = new DBUtil().getUsersNotFollowing(context, userId);
+
+				class UserComparison implements Comparator<Long> {
             private double similarity(long i, long j) {
                 try {
                     return CosineDistanceMeasure.distance(factorization.getUserFeatures(i), factorization.getUserFeatures(j));
@@ -193,12 +192,20 @@ public class RecommenderWS {
                 }
 
             }
-        });
-        for (Entry<Long, Integer> entry : userIDMappings) {
-            topk.offer(entry.getKey());
+        }
+				UserComparison comparison = new UserComparison();
+        TopK<Long> topk = new TopK<>(20, comparison);
+        for (Long id : userIds) {
+            topk.offer(id);
         }
 
-        return (Long[]) topk.retrieve().toArray();
+        List<Long> top = topk.retrieve();
+				String[] topWithSim = new String[top.size()];
+				for (int i = 0; i < topWithSim.length; ++i) {
+					long id = top.get(i);
+					topWithSim[i] = id + ";" + comparison.similarity(id, userId);
+				}
+				return topWithSim;
     }
 
     @WebMethod(operationName = "getItemNearestNeighborList")
@@ -247,4 +254,5 @@ public class RecommenderWS {
         Boolean ongoing = ongoingTrainingStates.get(context);
         return ongoing != null && ongoing;
     }
+
 }
