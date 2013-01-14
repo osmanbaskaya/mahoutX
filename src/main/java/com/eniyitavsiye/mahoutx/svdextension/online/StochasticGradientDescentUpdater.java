@@ -29,6 +29,7 @@ public class StochasticGradientDescentUpdater implements UserFactorUpdater {
 		double[] itemFactors = availableFactorization.getItemFeatures(itemID);
 		
 		for (int iter = 0; iter < iterationCount; ++iter) {
+			//FIXME need to recalculate error!
 			for (int i = 0; i < userFactors.length; i++) {
 				userFactors[i] += gamma * (error * itemFactors[i] - lambda * userFactors[i]);
 			}
@@ -38,7 +39,7 @@ public class StochasticGradientDescentUpdater implements UserFactorUpdater {
 	
 	@Override
 	public void refresh(Collection<Refreshable> alreadyRefreshed) {
-		// nothing to do here (netbeans git deneme) //osman
+		// nothing to do here 
 	}
 
 }

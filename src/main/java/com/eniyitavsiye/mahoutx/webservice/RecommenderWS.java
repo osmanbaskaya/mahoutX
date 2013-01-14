@@ -24,7 +24,6 @@ import org.apache.mahout.cf.taste.impl.model.jdbc.ConnectionPoolDataSource;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.impl.recommender.svd.SVDRecommender;
-import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.common.distance.CosineDistanceMeasure;
@@ -105,7 +104,7 @@ public class RecommenderWS {
             return list;
         } catch (TasteException ex) {
             log.log(Level.SEVERE, null, ex);
-            return new String[0];
+						throw new RuntimeException(ex);
         }
     }
 
@@ -137,9 +136,9 @@ public class RecommenderWS {
                 list[i] = recommendedItem.getItemID() + ";" + recommendedItem.getValue();
             }
             return list;
-        } catch (TasteException ex) {
+        } catch (Exception ex) {
             log.log(Level.SEVERE, null, ex);
-            return new String[0];
+						throw new RuntimeException(ex);
         }
     }
 
