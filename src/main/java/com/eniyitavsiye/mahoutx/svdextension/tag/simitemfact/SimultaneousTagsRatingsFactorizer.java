@@ -1,5 +1,7 @@
+package com.eniyitavsiye.mahoutx.svdextension.tag.simitemfact;
 
-package com.eniyitavsiye.mahoutx.svdextension.tag;
+
+
 
 import com.google.common.base.Preconditions;
 import java.util.List;
@@ -8,6 +10,7 @@ import java.util.Random;
 import com.google.common.collect.Lists;
 import java.util.Collections;
 import org.apache.mahout.cf.taste.common.TasteException;
+import org.apache.mahout.cf.taste.example.kddcup.track1.svd.ParallelArraysSGDFactorizer;
 import org.apache.mahout.cf.taste.impl.common.FullRunningAverage;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.impl.common.RunningAverage;
@@ -19,7 +22,6 @@ import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.model.Preference;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.math.DenseVector;
-import org.apache.mahout.math.Vector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
