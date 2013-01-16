@@ -82,6 +82,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer {
 		Matrix V = initialize(D, M);
 
 		DiagonalMatrix alphaI = new DiagonalMatrix(alpha, M);
+		Matrix betaL = L.times(beta);
 
 		//for each iteration
 		for (int w = 1; w <= W; ++w) {
@@ -90,9 +91,8 @@ public class TagCoFiFactorizer extends AbstractFactorizer {
 			for (int d = 1; d <= D; ++d) {
 				Matrix W = new DiagonalMatrix(computeVdjSquareSums(R, V));
 				Vector x = computeX(R, U, V);
-				//TODO move betaL to outside of loops
 				Vector Ud = U.viewRow(d);
-				Vector grad_f_Ud = W.plus(alphaI).plus(L.times(beta)).times(Ud).minus(x);
+				Vector grad_f_Ud = W.plus(alphaI).plus(betaL).times(Ud).minus(x);
 				Ud.assign(Ud.minus(grad_f_Ud.times(delta)));
 			}
 			//for each item
