@@ -8,15 +8,11 @@ import org.apache.mahout.cf.taste.common.Refreshable;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.FastByIDMap;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
-import org.apache.mahout.cf.taste.impl.model.GenericUserPreferenceArray;
 import org.apache.mahout.cf.taste.impl.recommender.AbstractRecommender;
-import org.apache.mahout.cf.taste.impl.recommender.TopItems;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.SVDRecommender;
 import org.apache.mahout.cf.taste.model.DataModel;
-import org.apache.mahout.cf.taste.model.Preference;
-import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.apache.mahout.cf.taste.recommender.IDRescorer;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 
@@ -91,17 +87,18 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		userFactorUpdater.updateUserFactor(features, factorization, userID, itemID, rat);
 	}
 
+/*
 	@Override
 	public List<RecommendedItem> recommend(final long userID, int howMany,
 			IDRescorer rescorer) throws TasteException {
-	    //Preconditions.checkArgument(howMany >= 1, "howMany must be at least 1");
-	    //log.debug("Recommending items for user ID '{}'", userID);
-		
-		
-		
-	    FastIDSet possibleItemIDs;
-	    PreferenceArray preferencesFromUser;
-	    FastIDSet newlyRatedItems = itemsOfUsers.get(userID); 
+		//Preconditions.checkArgument(howMany >= 1, "howMany must be at least 1");
+		//log.debug("Recommending items for user ID '{}'", userID);
+	
+	
+	
+		FastIDSet possibleItemIDs;
+		PreferenceArray preferencesFromUser;
+		FastIDSet newlyRatedItems = itemsOfUsers.get(userID); 
 		if (newUserFeatures.containsKey(userID)) {
 			preferencesFromUser = new GenericUserPreferenceArray(newlyRatedItems.size());
 			int i = 0;
@@ -137,21 +134,43 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		// we assumed PreferredItemsNeighborhoodCandidateItemsStrategy is used.
 		possibleItemIDs = getAllOtherItems(userID, preferencesFromUser);
 		//following might be unnecessary:
-	    if (newlyRatedItems != null) {
-		    possibleItemIDs.removeAll(newlyRatedItems);	
-	    }
-	    
-	    List<RecommendedItem> topItems = TopItems.getTopItems(howMany, possibleItemIDs.iterator(), rescorer,
-	        new TopItems.Estimator<Long>() {
-				
-				@Override
-				public double estimate(Long itemID) throws TasteException {
-					return estimatePreference(userID, itemID);
-				}
-			});
-	    //log.debug("Recommendations are: {}", topItems);
+		if (newlyRatedItems != null) {
+			possibleItemIDs.removeAll(newlyRatedItems);	
+		}
+		
+		List<RecommendedItem> topItems = TopItems.getTopItems(howMany, possibleItemIDs.iterator(), rescorer,
+				new TopItems.Estimator<Long>() {
+			
+			@Override
+			public double estimate(Long itemID) throws TasteException {
+				return estimatePreference(userID, itemID);
+			}
+		});
+		//log.debug("Recommendations are: {}", topItems);
 
-	    return topItems;
+		return topItems;
+	}
+*/
+
+	@Override
+	public List<RecommendedItem> recommend(final long userID, int howMany, 
+			final IDRescorer rescorer) throws TasteException {
+
+		return delegateRecommender.recommend(userID, howMany, new IDRescorer() {
+
+			@Override
+			public double rescore(long id, double originalScore) {
+				return rescorer == null ? 
+								originalScore : 
+								rescorer.rescore(id, originalScore);
+			}
+
+			@Override
+			public boolean isFiltered(long id) {
+				return itemsOfUsers.get(userID).contains(id) 
+								|| (rescorer == null ? false : rescorer.isFiltered(id));
+			}
+		});
 	}
 
 	@Override
