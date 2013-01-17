@@ -143,6 +143,7 @@ public final class SimultaneousTagsRatingsFactorizer extends AbstractFactorizer 
 		double uDotI = new DenseVector(uI).dot(new DenseVector(iJ));
 		double wDotI = new DenseVector(wI).dot(new DenseVector(iJ));
 		double rErr = uDotI - pref.getValue();
+		/*
 		double tErr = wDotI - pref.getTagValue();
 		uI[f] += rErr * iJ[f] + preventOverfitting * uI[f];
 		iJ[f] += rErr * uI[f] + kappa * tErr * wI[f] + preventOverfitting * iJ[f];
@@ -151,6 +152,8 @@ public final class SimultaneousTagsRatingsFactorizer extends AbstractFactorizer 
     leftVectorI[f] += learningRate * (err * rightVectorJ[f] - preventOverfitting * leftVectorI[f]);
     rightVectorJ[f] += learningRate * (err * leftVectorIF - preventOverfitting * rightVectorJ[f]);
     return err;
+		*/
+		return 0;
   }
 
   private void buildCache(int i, int j, int k, SVDPreference pref) {
