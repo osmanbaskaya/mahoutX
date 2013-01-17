@@ -8,11 +8,15 @@ import org.apache.mahout.cf.taste.common.Refreshable;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.FastByIDMap;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
+import org.apache.mahout.cf.taste.impl.model.GenericUserPreferenceArray;
 import org.apache.mahout.cf.taste.impl.recommender.AbstractRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.TopItems;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.SVDRecommender;
 import org.apache.mahout.cf.taste.model.DataModel;
+import org.apache.mahout.cf.taste.model.Preference;
+import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.apache.mahout.cf.taste.recommender.IDRescorer;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 
@@ -87,7 +91,6 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		userFactorUpdater.updateUserFactor(features, factorization, userID, itemID, rat);
 	}
 
-/*
 	@Override
 	public List<RecommendedItem> recommend(final long userID, int howMany,
 			IDRescorer rescorer) throws TasteException {
@@ -150,8 +153,8 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 
 		return topItems;
 	}
-*/
 
+/*
 	@Override
 	public List<RecommendedItem> recommend(final long userID, int howMany, 
 			final IDRescorer rescorer) throws TasteException {
@@ -172,6 +175,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 			}
 		});
 	}
+*/
 
 	@Override
 	public void refresh(Collection<Refreshable> alreadyRefreshed) {
