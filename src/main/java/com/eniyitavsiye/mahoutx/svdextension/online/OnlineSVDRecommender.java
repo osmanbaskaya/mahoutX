@@ -79,8 +79,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 				newUserFeatures.put(userID, features);
 			}
 		}
-		double error = rat - estimatePreference(userID, itemID);
-		userFactorUpdater.updateUserFactor(features, factorization, userID, itemID, rat, error);
+		userFactorUpdater.updateUserFactor(features, factorization, userID, itemID, rat);
 	}
 
 	@Override
