@@ -87,7 +87,6 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		userFactorUpdater.updateUserFactor(features, factorization, userID, itemID, rat);
 	}
 
-/*
 	@Override
 	public List<RecommendedItem> recommend(final long userID, int howMany,
 			IDRescorer rescorer) throws TasteException {
@@ -150,8 +149,8 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 
 		return topItems;
 	}
-*/
 
+/*
 	@Override
 	public List<RecommendedItem> recommend(final long userID, int howMany, 
 			final IDRescorer rescorer) throws TasteException {
@@ -172,6 +171,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 			}
 		});
 	}
+*/
 
 	@Override
 	public void refresh(Collection<Refreshable> alreadyRefreshed) {
