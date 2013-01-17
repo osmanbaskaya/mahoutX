@@ -121,6 +121,20 @@ public class RecommenderWS {
         }
     }
 
+    @WebMethod(operationName = "addPreference")
+    public void addPreference(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "userId") long userId,
+            @WebParam(name = "itemId") long itemId,
+						@WebParam(name = "rating") byte rating) throws Exception {
+			try {
+				OnlineSVDRecommender osr = (OnlineSVDRecommender) predictor.get(context);
+				osr.addPreference(userId, itemId, rating);
+			} catch (ClassCastException e) {
+				throw new RuntimeException("Recommender for context " + context + 
+								" is not instance of OnlineSVDRecommender", e);
+			}
+		}
     @WebMethod(operationName = "getRecommendationList")
     public String[] getRecommendationList(
             @WebParam(name = "context") String context,
