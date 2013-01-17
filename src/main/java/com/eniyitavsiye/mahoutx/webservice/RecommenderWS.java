@@ -4,6 +4,8 @@ import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
 import com.eniyitavsiye.mahoutx.common.LimitMySQLJDBCDataModel;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
+import com.eniyitavsiye.mahoutx.svdextension.online.OnlineSVDRecommender;
+import com.eniyitavsiye.mahoutx.svdextension.online.StochasticGradientDescentUpdater;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -52,11 +54,22 @@ public class RecommenderWS {
         try {
             ongoingTrainingStates.put(context, Boolean.TRUE);
             log.log(Level.INFO, "buildItemSimilarityMatrix starts.");
+
             DBUtil dbUtil = new DBUtil();
             LimitMySQLJDBCDataModel model = new LimitMySQLJDBCDataModel(new ConnectionPoolDataSource(dbUtil.getDataSource()), context + "_rating", "user_id", "item_id", "rating", null);
             ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(model);
-            FactorizationCachingFactorizer cachingFactorizer = new FactorizationCachingFactorizer(new ParallelArraysSGDFactorizer(reloadModel, 25, 25));
-            Recommender recommender = new SVDRecommender(reloadModel, cachingFactorizer);
+
+            FactorizationCachingFactorizer cachingFactorizer = 
+										new FactorizationCachingFactorizer(
+										new ParallelArraysSGDFactorizer(reloadModel, 25, 25));
+						StochasticGradientDescentUpdater updater = 
+										new StochasticGradientDescentUpdater(
+										ParallelArraysSGDFactorizer.DEFAULT_LEARNING_RATE, 
+										ParallelArraysSGDFactorizer.DEFAULT_PREVENT_OVERFITTING);
+
+            Recommender recommender = new OnlineSVDRecommender(reloadModel, cachingFactorizer, updater);
+						updater.setRecommender(recommender);
+										//new SVDRecommender(reloadModel, cachingFactorizer);
             log.log(Level.INFO, "Data loading and training done.");
 
             predictor.put(context, recommender);
@@ -135,6 +148,7 @@ public class RecommenderWS {
 								" is not instance of OnlineSVDRecommender", e);
 			}
 		}
+
     @WebMethod(operationName = "getRecommendationList")
     public String[] getRecommendationList(
             @WebParam(name = "context") String context,
