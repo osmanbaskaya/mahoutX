@@ -14,6 +14,10 @@ public class StochasticGradientDescentUpdater implements UserFactorUpdater {
 	private double lambda;
 	private int iterationCount;
 	private Recommender recommender;
+
+	public void setRecommender(Recommender recommender) {
+		this.recommender = recommender;
+	}
 	
 	public StochasticGradientDescentUpdater(Recommender recommender, double gamma, 
 					double lambda, int iterationCount) {
@@ -23,8 +27,8 @@ public class StochasticGradientDescentUpdater implements UserFactorUpdater {
 		this.iterationCount = iterationCount;
 	}
 	
-	public StochasticGradientDescentUpdater(Recommender recommender, double gamma, double lambda) {
-		this(recommender, gamma, lambda, DEFAULT_ITERATION_COUNT);
+	public StochasticGradientDescentUpdater(double gamma, double lambda) {
+		this(null, gamma, lambda, DEFAULT_ITERATION_COUNT);
 	}
 	
 	@Override
@@ -32,6 +36,9 @@ public class StochasticGradientDescentUpdater implements UserFactorUpdater {
 			Factorization availableFactorization, long userID, long itemID,
 			float rating) throws TasteException {
 		
+		if (recommender == null) {
+			throw new RuntimeException("Recommender is null! Cannot estimate preferences.");
+		}
 		double[] itemFactors = availableFactorization.getItemFeatures(itemID);
 		
 		for (int iter = 0; iter < iterationCount; ++iter) {
