@@ -135,6 +135,8 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		return createFactorization(extractDoubleArray(U), extractDoubleArray(V));
 	}
 	
+	//TODO check if every dense implementation usage is strictly necessary!
+
 	private double[][] extractDoubleArray(Matrix m) {
 		double[][] arr = new double[m.numRows()][m.numCols()];
 		for (int i = 0; i < arr.length; ++i) {
@@ -306,9 +308,14 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 				int N = z.columnSize();
 				Matrix s = new SparseMatrix(N, N);
 
-				//TODO iterate over non-zero elements.
-				for (int i = 0; i < N; ++i) {
-					for (int j = i + 1; j < N; ++j) {
+				Iterator<MatrixSlice> matIterator = s.iterateAll();
+				while (matIterator.hasNext()) {
+					MatrixSlice slice = matIterator.next();
+					int i = slice.index();
+					Iterator<Element> rowIterator = slice.vector().iterateNonZero();
+
+					while(rowIterator.hasNext()) {
+						int j = rowIterator.next().index();
 
 						Iterator<Element> commonTags = this.commonTagIterator(userTagMatrix, i, j);
 						double dot = 0;
@@ -344,9 +351,14 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 					}
 				});
 
-				//TODO iterate over non-zero elements.
-				for (int i = 0; i < N; ++i) {
-					for (int j = i + 1; j < N; ++j) {
+				Iterator<MatrixSlice> matIterator = s.iterateAll();
+				while (matIterator.hasNext()) {
+					MatrixSlice slice = matIterator.next();
+					int i = slice.index();
+					Iterator<Element> rowIterator = slice.vector().iterateNonZero();
+
+					while(rowIterator.hasNext()) {
+						int j = rowIterator.next().index();
 
 						Iterator<Element> commonTags = this.commonTagIterator(userTagMatrix, i, j);
 						double dot = 0;

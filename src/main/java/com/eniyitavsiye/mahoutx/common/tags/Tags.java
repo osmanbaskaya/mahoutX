@@ -28,6 +28,10 @@ public class Tags {
 		return tagIndices.get(tag);
 	}
 
+	public int getTagCount() {
+		return tagIndices.size();
+	}
+
 	public Tags pruneThoseHold(TagPredicate pred) {
 		Builder builder = new Builder();
 		for (String tag : tagIndices.keySet()) {
