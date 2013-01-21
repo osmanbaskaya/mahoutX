@@ -65,6 +65,10 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 
 	private DataModel dataModel;
 
+	private final int N;
+	private final int M;
+	private int T;
+
 	public TagCoFiFactorizer(DataModel dataModel,  
 					SimilarityCalculator similarityCalculator, int D, int W, 
 					double delta, double alpha, double beta) throws TasteException {
@@ -76,10 +80,13 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		this.delta = delta;
 		this.alpha = alpha;
 		this.beta = beta;
+		this.N = dataModel.getNumUsers();
+		this.M = dataModel.getNumItems();
 	}
 
 	public void setUserTagMatrix(Matrix userTagMatrix) {
 		this.userTagMatrix = userTagMatrix;
+		this.T = userTagMatrix.rowSize();
 	}
 
 	@Override
@@ -100,9 +107,6 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 			}
 		})).minus(S);
 
-		final int M = R.rowSize(); //number of items
-		final int N = R.columnSize(); // number of user.
-
 		Matrix U = initRandom(D, N, 0.1);
 		Matrix V = initRandom(D, M, 0.1);
 
@@ -114,10 +118,10 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 
 			//for each factor
 			for (int d = 1; d <= D; ++d) {
-				Matrix W = new DiagonalMatrix(computeVdjSquareSums(R, V, d));
+				Matrix W_mat = new DiagonalMatrix(computeVdjSquareSums(R, V, d));
 				Vector x = computeXVector(R, U, V, d);
 				Vector Ud = U.viewRow(d);
-				Vector grad_f_Ud = W.plus(alphaI).plus(betaL).times(Ud).minus(x);
+				Vector grad_f_Ud = W_mat.plus(alphaI).plus(betaL).times(Ud).minus(x);
 				Ud.assign(Ud.minus(grad_f_Ud.times(delta)));
 			}
 			//for each item
@@ -142,7 +146,6 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 	}
 
 	private double[] computeVdjSquareSums(Matrix R, Matrix V, int d) {
-		int N = R.columnSize();
 		double[] vec = new double[N];
 		for (int i = 0; i < N; ++i) {
 			Iterator<Element> nonZeroRatingsOfI = R.viewRow(i).iterateNonZero();
@@ -156,8 +159,6 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 	}
 
 	private Matrix extractRatings() throws TasteException {
-		int N = dataModel.getNumUsers();
-		int M = dataModel.getNumItems();
 		Matrix r = new SparseMatrix(N, M);
 		LongPrimitiveIterator it = dataModel.getUserIDs();
 		while (it.hasNext()) {
@@ -176,8 +177,6 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		//TODO Search lucene for TF IDF implementation
 		//document: Tags
 		//terms   : user
-		final int N = userTagMatrix.columnSize();
-		final int T = userTagMatrix.rowSize();
 		//tf(i,k) = userTagMatrix(i, k) / max(userTagMatrix(*, k))
 		Vector idfs = userTagMatrix.aggregateRows(new VectorFunction() {
 
@@ -256,7 +255,6 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 	}
 
 	private Vector computeXVector(Matrix R, Matrix U, Matrix V, int d) {
-		int N = R.columnSize();
 		Vector vec = new DenseVector(N);
 		for (int i = 0; i < N; ++i) {
 			double sum = 0;
@@ -276,7 +274,6 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 	}
 
 	private Matrix sumOuterUserFactorProducts(Matrix R, Matrix U, int j) {
-		int N = U.rowSize();
 		Matrix result = new DenseMatrix(N, N);
 		Iterator<Element> nonZeroRatingsOfI = R.viewColumn(j).iterateNonZero();
 		
@@ -439,6 +436,16 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 	@Override
 	public Integer itemIndex(long id) {
 		return super.itemIndex(id);
+	}
+
+	@Override
+	public int getUserCount() {
+		return N;
+	}
+
+	@Override
+	public int getItemCount() {
+		return M;
 	}
 
 }

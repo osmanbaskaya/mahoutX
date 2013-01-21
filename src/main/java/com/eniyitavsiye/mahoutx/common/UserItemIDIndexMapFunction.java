@@ -12,5 +12,8 @@ public interface UserItemIDIndexMapFunction {
 
 	public Integer userIndex(long id);
 	public Integer itemIndex(long id);
+
+	public int getUserCount();
+	public int getItemCount();
 	
 }
