@@ -167,20 +167,72 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 	}
 
 	private Matrix computeTF_IDF() {
-		int N = userTagMatrix.columnSize();
-		int T = userTagMatrix.rowSize();
-		//TODO SparseMatrix could be used instead.
-		Matrix z = new DenseMatrix(N, T);
-		for (int i = 0; i < N; ++i) {
-			for (int j = 0; j < T; ++j) {
-				double tf = userTagMatrix.get(i, j); //TODO calculate normalized frequency!
-				double idf = userTagMatrix.viewColumn(j).zSum(); //TODO this may mean counting non-zeros.
-				if (idf == 0) { //prevent NaN
-					z.set(i, j, 0);
-				} else {
-					double tf_idf = tf * Math.log(N/idf)/Math.log(2);
+		//TODO Search lucene for TF IDF implementation
+		//document: Tags
+		//terms   : user
+		final int N = userTagMatrix.columnSize();
+		final int T = userTagMatrix.rowSize();
+		//tf(i,k) = userTagMatrix(i, k) / max(userTagMatrix(*, k))
+		Vector idfs = userTagMatrix.aggregateRows(new VectorFunction() {
+
+			@Override
+			public double apply(Vector f) {
+				return f.aggregate(
+								new DoubleDoubleFunction() {
+
+					@Override
+					public double apply(double arg1, double arg2) {
+						return arg1 + arg2;
+					}
+				}, 
+								new DoubleFunction() {
+
+					@Override
+					public double apply(double arg1) {
+						return arg1 > 0 ? 1 : 0;
+					}
+				});
+
+			}
+		})
+															 .assign(new DoubleFunction() {
+
+			@Override
+			public double apply(double arg) {
+				return Math.log(T / arg);
+			}
+			
+		});
+		//idf(i) = log(T/sum(userTagMatrix(i, *) != 0))
+		Vector colMaxes = userTagMatrix.aggregateColumns(new VectorFunction() {
+
+			@Override
+			public double apply(Vector f) {
+				return f.maxValue();
+			}
+		});
+		Matrix z = new SparseMatrix(N, T);
+
+		Iterator<MatrixSlice> matrixIterator = userTagMatrix.iterator();
+		while (matrixIterator.hasNext()) {
+			MatrixSlice slice = matrixIterator.next();
+
+			int i = slice.index();
+
+			Iterator<Element> rowIterator = slice.vector().iterateNonZero();
+			while (rowIterator.hasNext()) {
+				Element elem = rowIterator.next();
+
+				int j = elem.index();
+
+				double tf = elem.get() / colMaxes.get(j);
+				double idf = idfs.get(j);
+				double tf_idf = tf * Math.log(N/idf)/Math.log(2);
+
+				if (isValidValue(tf_idf)) { //prevent NaN;
 					z.set(i, j, tf_idf);
 				}
+
 			}
 		}
 		return z;
