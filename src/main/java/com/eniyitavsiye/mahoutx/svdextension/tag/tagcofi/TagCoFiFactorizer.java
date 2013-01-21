@@ -65,12 +65,11 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 
 	private DataModel dataModel;
 
-	public TagCoFiFactorizer(DataModel dataModel, Matrix userTagMatrix, 
+	public TagCoFiFactorizer(DataModel dataModel,  
 					SimilarityCalculator similarityCalculator, int D, int W, 
 					double delta, double alpha, double beta) throws TasteException {
 		super(dataModel);
 		this.dataModel = dataModel;
-		this.userTagMatrix = userTagMatrix;
 		this.similarityCalculator = similarityCalculator;
 		this.D = D;
 		this.W = W;
@@ -79,8 +78,15 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		this.beta = beta;
 	}
 
+	public void setUserTagMatrix(Matrix userTagMatrix) {
+		this.userTagMatrix = userTagMatrix;
+	}
+
 	@Override
 	public Factorization factorize() throws TasteException {
+		if (userTagMatrix != null) {
+			throw new IllegalStateException("userTagMatrix is null! Before trying to build the model, set it first.");
+		}
 		Matrix R = extractRatings();
 		Matrix Z = computeTF_IDF(); //from tags
 		Matrix S = similarityCalculator.calculateSimilarityFrom(Z, userTagMatrix);
