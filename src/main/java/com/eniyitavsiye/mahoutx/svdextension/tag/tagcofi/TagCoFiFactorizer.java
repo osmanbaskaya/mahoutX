@@ -98,8 +98,8 @@ public class TagCoFiFactorizer extends AbstractFactorizer {
 
 			//for each factor
 			for (int d = 1; d <= D; ++d) {
-				Matrix W = new DiagonalMatrix(computeVdjSquareSums(R, V));
-				Vector x = computeXVector(R, U, V);
+				Matrix W = new DiagonalMatrix(computeVdjSquareSums(R, V, d));
+				Vector x = computeXVector(R, U, V, d);
 				Vector Ud = U.viewRow(d);
 				Vector grad_f_Ud = W.plus(alphaI).plus(betaL).times(Ud).minus(x);
 				Ud.assign(Ud.minus(grad_f_Ud.times(delta)));
@@ -107,7 +107,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer {
 			//for each item
 			for (int j = 1; j <= M; ++j) {
 				Vector Vj = V.viewRow(j);
-				Vector grad_f_Vj = (alphaI.plus(sumOuterUserFactorProducts(R, U))).times(Vj).minus(sumUserFactorWithJthItemRatings(R, U));
+				Vector grad_f_Vj = (alphaI.plus(sumOuterUserFactorProducts(R, U, j))).times(Vj).minus(sumUserFactorWithJthItemRatings(R, U, j));
 				Vj.assign(Vj.minus(grad_f_Vj.times(delta)));
 			}
 		
@@ -125,8 +125,18 @@ public class TagCoFiFactorizer extends AbstractFactorizer {
 		return arr;
 	}
 
-	private double[] computeVdjSquareSums(Matrix R, Matrix V) {
-		throw new UnsupportedOperationException("Not yet implemented");
+	private double[] computeVdjSquareSums(Matrix R, Matrix V, int d) {
+		int N = R.columnSize();
+		double[] vec = new double[N];
+		for (int i = 0; i < N; ++i) {
+			Iterator<Element> nonZeroRatingsOfI = R.viewRow(i).iterateNonZero();
+			while (nonZeroRatingsOfI.hasNext()) {
+				int j = nonZeroRatingsOfI.next().index();
+				double vdj = V.get(d, j);
+				vec[i] += vdj*vdj;
+			}
+		}
+		return vec;
 	}
 
 	private Matrix extractRatings() throws TasteException {
@@ -177,21 +187,50 @@ public class TagCoFiFactorizer extends AbstractFactorizer {
 		return m;
 	}
 
-	private Vector computeXVector(Matrix R, Matrix U, Matrix V) {
-		throw new UnsupportedOperationException("Not yet implemented");
-	}
-
-	private DiagonalMatrix sumOuterUserFactorProducts(Matrix R, Matrix U) {
-		int N = U.rowSize();
-		double[] values = new double[N];
+	private Vector computeXVector(Matrix R, Matrix U, Matrix V, int d) {
+		int N = R.columnSize();
+		Vector vec = new DenseVector(N);
 		for (int i = 0; i < N; ++i) {
-
+			double sum = 0;
+			Iterator<Element> nonZeroRatingsOfI = R.viewRow(i).iterateNonZero();
+			while (nonZeroRatingsOfI.hasNext()) {
+				Element elem = nonZeroRatingsOfI.next();
+				int j = elem.index();
+				double rij = elem.get();
+				double vdj = V.get(d, j);
+				double uI_dot_vJ = U.viewColumn(i).dot(V.viewColumn(j));
+				double udivdj = vdj * U.get(d, i);
+				sum += vdj * (rij - uI_dot_vJ + udivdj);
+			}
+			vec.set(i, sum);
 		}
-		return new DiagonalMatrix(values);
+		return vec;
 	}
 
-	private Vector sumUserFactorWithJthItemRatings(Matrix R, Matrix U) {
-		throw new UnsupportedOperationException("Not yet implemented");
+	private Matrix sumOuterUserFactorProducts(Matrix R, Matrix U, int j) {
+		int N = U.rowSize();
+		Matrix result = new DenseMatrix(N, N);
+		Iterator<Element> nonZeroRatingsOfI = R.viewColumn(j).iterateNonZero();
+		
+		while (nonZeroRatingsOfI.hasNext()) {
+			Element elem = nonZeroRatingsOfI.next();
+			int i = elem.index();
+			Vector uI = U.viewColumn(i);
+			result.assign(result.plus(uI.cross(uI)));
+		}
+		return result;
+	}
+
+	private Vector sumUserFactorWithJthItemRatings(Matrix R, Matrix U, int j) {
+		Vector vec = new DenseVector(D);
+		Iterator<Element> nonZeroRatingsOfI = R.viewColumn(j).iterateNonZero();
+		while (nonZeroRatingsOfI.hasNext()) {
+			Element elem = nonZeroRatingsOfI.next();
+			int i = elem.index();
+			double rij = elem.get();
+			vec.assign(vec.plus(U.viewColumn(i).times(rij)));
+		}
+		return vec;
 	}
 
 	public enum SimilarityCalculator {
