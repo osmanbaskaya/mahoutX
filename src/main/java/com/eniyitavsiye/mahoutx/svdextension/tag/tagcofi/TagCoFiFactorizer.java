@@ -4,29 +4,33 @@
  */
 package com.eniyitavsiye.mahoutx.svdextension.tag.tagcofi;
 
+import com.eniyitavsiye.mahoutx.common.UserItemIDIndexMapFunction;
+import java.util.Iterator;
 import java.util.Random;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
-import org.apache.mahout.cf.taste.impl.recommender.AbstractRecommender;
 import org.apache.mahout.cf.taste.impl.recommender.svd.AbstractFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.model.PreferenceArray;
-import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.math.DenseMatrix;
+import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.DiagonalMatrix;
 import org.apache.mahout.math.Matrix;
+import org.apache.mahout.math.MatrixSlice;
 import org.apache.mahout.math.SparseMatrix;
 import org.apache.mahout.math.Vector;
+import org.apache.mahout.math.Vector.Element;
 import org.apache.mahout.math.function.DoubleDoubleFunction;
+import org.apache.mahout.math.function.DoubleFunction;
 import org.apache.mahout.math.function.VectorFunction;
 
 /**
  *
  * @author ceyhun
  */
-public class TagCoFiFactorizer extends AbstractFactorizer {
+public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDIndexMapFunction {
 	
 	///home/ceyhun/Dropbox/Projects/doctoral/dataset/MovieLens/10M100K
 	/**
@@ -368,4 +372,15 @@ public class TagCoFiFactorizer extends AbstractFactorizer {
 	private static boolean isValidValue(double sim) {
 		return sim != 0 && !Double.isNaN(sim) && !Double.isInfinite(sim);
 	}
+
+	@Override
+	public Integer userIndex(long id) {
+		return super.userIndex(id);
+	}
+
+	@Override
+	public Integer itemIndex(long id) {
+		return super.itemIndex(id);
+	}
+
 }
