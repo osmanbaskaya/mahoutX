@@ -27,6 +27,12 @@ import org.apache.mahout.math.function.VectorFunction;
  * @author ceyhun
  */
 public class TagCoFiFactorizer extends AbstractFactorizer {
+	
+	///home/ceyhun/Dropbox/Projects/doctoral/dataset/MovieLens/10M100K
+	/**
+	 * Dispersion parameter for gaussian in euclidean-based similarity.
+	 */
+	private static final double EUCLIDEAN_SIGMA = 0.5;
 
 	/**
 	 * Number of factors;
@@ -241,42 +247,125 @@ public class TagCoFiFactorizer extends AbstractFactorizer {
 				int N = z.columnSize();
 				Matrix s = new SparseMatrix(N, N);
 
+				//TODO iterate over non-zero elements.
 				for (int i = 0; i < N; ++i) {
-
-					Vector tagsOfUserI = userTagMatrix.viewRow(i);
 					for (int j = i + 1; j < N; ++j) {
 
-						Vector tagsOfUserJ = userTagMatrix.viewRow(j);
-						Vector ijmtimes = tagsOfUserI.clone().assign(tagsOfUserJ, new DoubleDoubleFunction() {
+						Iterator<Element> commonTags = this.commonTagIterator(userTagMatrix, i, j);
+						double dot = 0;
+						double norm1 = 0;
+						double norm2 = 0;
+						while (commonTags.hasNext()) {
+							int k = commonTags.next().index();
+							double zik = z.get(i, k);
+							double zij = z.get(i, j);
+							dot += zik * zij;
+							norm1 += zik * zik;
+							norm2 += zij * zij;
+						}
+						double sim = dot / Math.sqrt(norm1 * norm2);
+						if (isValidValue(sim)) {
+							s.set(i, j, sim);
+						}
+					}
+				}
+				return s;
+			}
 
-							@Override
-							public double apply(double arg1, double arg2) {
-								return arg1 * arg2;
-							}
+		},
+		PEARSON {
+			@Override
+			public Matrix calculateSimilarityFrom(Matrix z, Matrix userTagMatrix) {
+				int N = z.columnSize();
+				Matrix s = new SparseMatrix(N, N);
+				Vector zColMeans = z.aggregateColumns(new VectorFunction() {
+					@Override
+					public double apply(Vector f) {
+						return f.zSum() / f.size();
+					}
+				});
 
-						});
-						ijmtimes.iterateNonZero();
+				//TODO iterate over non-zero elements.
+				for (int i = 0; i < N; ++i) {
+					for (int j = i + 1; j < N; ++j) {
 
+						Iterator<Element> commonTags = this.commonTagIterator(userTagMatrix, i, j);
+						double dot = 0;
+						double norm1 = 0;
+						double norm2 = 0;
+						while (commonTags.hasNext()) {
+							int k = commonTags.next().index();
+							double zik = z.get(i, k) - zColMeans.get(i);
+							double zij = z.get(i, j) - zColMeans.get(j);
+							dot += zik * zij;
+							norm1 += zik * zik;
+							norm2 += zij * zij;
+						}
+						double sim = dot / Math.sqrt(norm1 * norm2);
+						sim = 1 / (1 + Math.exp(sim));
+						
+						if (isValidValue(sim)) {
+							s.set(i, j, sim);
+						}
 					}
 				}
 				return s;
 			}
 		},
-		PEARSON {
-			@Override
-			public Matrix calculateSimilarityFrom(Matrix z, Matrix userTagMatrix) {
-				throw new UnsupportedOperationException("Not yet implemented");
-			}
-		},
 		EUCLIDEAN {
 			@Override
 			public Matrix calculateSimilarityFrom(Matrix z, Matrix userTagMatrix) {
-				throw new UnsupportedOperationException("Not yet implemented");
+				int N = z.columnSize();
+				Matrix m = new SparseMatrix(N, N);
+				Iterator<MatrixSlice> matIterator = m.iterateAll();
+				while (matIterator.hasNext()) {
+					MatrixSlice slice = matIterator.next();
+					int i = slice.index();
+					Iterator<Element> rowIterator = slice.vector().iterateNonZero();
+					while (rowIterator.hasNext()) {
+						Element elem = rowIterator.next();
+						int j = elem.index();
+						Iterator<Element> commonTags = commonTagIterator(userTagMatrix, i, j);
+						double sim = 0;
+						while (commonTags.hasNext()) {
+							int k = commonTags.next().index();
+							double zik = z.get(i, k);
+							double zjk = z.get(j, k);
+							double d = zik - zjk;
+							sim += d * d;
+						}
+						sim = Math.exp(-sim / (2 * EUCLIDEAN_SIGMA * EUCLIDEAN_SIGMA));
+						if (isValidValue(sim)) {
+							m.set(i, j, sim);
+						}
+					}
+
+
+				}
+				return m;
 			}
 		};
+
 		
 		abstract Matrix calculateSimilarityFrom(Matrix Z, Matrix userTagMatrix);
 
+		protected Iterator<Element> commonTagIterator(Matrix tag, int i, int j) {
+			Vector tagsOfUserI = tag.viewRow(i);
+			Vector tagsOfUserJ = tag.viewRow(j);
+
+			Vector ijmtimes = tagsOfUserI.clone().assign(tagsOfUserJ, new DoubleDoubleFunction() {
+					@Override
+					public double apply(double arg1, double arg2) {
+						return arg1 * arg2;
+					}
+
+				});
+				Iterator<Element> commonTags = ijmtimes.iterateNonZero();
+				return commonTags;
+			}
 	}
 	
+	private static boolean isValidValue(double sim) {
+		return sim != 0 && !Double.isNaN(sim) && !Double.isInfinite(sim);
+	}
 }
