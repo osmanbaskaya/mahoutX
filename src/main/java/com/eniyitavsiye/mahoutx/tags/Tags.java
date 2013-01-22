@@ -43,7 +43,71 @@ public class Tags {
 	}
 
 	public interface TagPredicate {
+
 		public boolean holds(String tag);
+
+		public abstract class AbstractTagPredicate implements TagPredicate {
+
+			protected TaggingData data;
+
+			public AbstractTagPredicate(TaggingData data) {
+				this.data = data;
+			}
+			
+		}
+
+		public class TaggingLessThan extends AbstractTagPredicate {
+
+			private int threshold;
+
+			public TaggingLessThan(TaggingData data, int threshold) {
+				super(data);
+				this.threshold = threshold;
+			}
+
+			@Override
+			public boolean holds(String tag) {
+				return data.getTagUsedTotal(tag) < threshold;
+			}
+			
+		}
+
+		public class LengthNameMoreThan extends AbstractTagPredicate {
+
+			private int threshold;
+
+			public LengthNameMoreThan(TaggingData data, int threshold) {
+				super(data);
+				this.threshold = threshold;
+			}
+
+			@Override
+			public boolean holds(String tag) {
+				return tag.length() > threshold;
+			}
+
+		}
+
+		public class AnyHoldsPredicate implements TagPredicate {
+
+			private TagPredicate[] predicates;
+
+			public AnyHoldsPredicate(TagPredicate... predicates) {
+				this.predicates = predicates;
+			}
+
+			@Override
+			public boolean holds(String tag) {
+				for (TagPredicate pred : predicates) {
+					if (pred.holds(tag)) {
+						return true;
+					}
+				}
+				return false;
+			}
+
+		}
+
 	}
 
 	public static class Builder {
