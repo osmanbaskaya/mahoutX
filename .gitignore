@@ -9,3 +9,6 @@
 # Backup Files
 *~
 *.swp
+
+# Netbeans related files
+nb*.xml
