@@ -2,10 +2,10 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.eniyitavsiye.mahoutx.common.io;
+package com.eniyitavsiye.mahoutx.tags.io;
 
 import com.eniyitavsiye.mahoutx.common.UserItemIDIndexMapFunction;
-import com.eniyitavsiye.mahoutx.common.tags.TaggingData;
+import com.eniyitavsiye.mahoutx.tags.TaggingData;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;

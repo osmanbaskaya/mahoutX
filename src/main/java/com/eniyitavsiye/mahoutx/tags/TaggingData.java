@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.eniyitavsiye.mahoutx.common.tags;
+package com.eniyitavsiye.mahoutx.tags;
 
 import com.eniyitavsiye.mahoutx.common.UserItemIDIndexMapFunction;
 import java.util.ArrayList;
