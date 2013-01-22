@@ -22,6 +22,7 @@ public class TaggingData {
 	private Tags tags;
 	private Matrix userTags;
 	private Matrix itemTags;
+	private UserItemIDIndexMapFunction indexMap;
 
 	private TaggingData(int N, int M, int T) {
 		userTags = new SparseRowMatrix(N, T);
@@ -46,11 +47,30 @@ public class TaggingData {
 		return itemTags;
 	}
 
+	public int getItemNumTagged(long itemID, String tag) {
+		return (int) itemTags.get(indexMap.itemIndex(itemID), tags.getTagIndex(tag));
+	}
+
+	public int getUserNumTagged(long userID, String tag) {
+		return (int) userTags.get(indexMap.userIndex(userID), tags.getTagIndex(tag));
+	}
+
+	public int getItemNumTaggedTotal(long itemID, String tag) {
+		return (int) itemTags.viewRow(indexMap.itemIndex(itemID)).zSum();
+	}
+
+	public int getUserNumTaggedTotal(long userID, String tag) {
+		return (int) userTags.viewRow(indexMap.userIndex(userID)).zSum();
+	}
+
+	public int getTagUsedTotal(String tag) {
+		return (int) userTags.viewColumn(tags.getTagIndex(tag)).zSum();
+	}
+
 	public static class Builder {
 
 		private Tags.Builder tagBuilder = new Tags.Builder();
 		private UserItemIDIndexMapFunction indexMap;
-		private TaggingData data;
 		private List<RandomAccessSparseVector> userTagging;
 		private List<RandomAccessSparseVector> itemTagging;
 		
@@ -97,7 +117,7 @@ public class TaggingData {
 				RandomAccessSparseVector col = new RandomAccessSparseVector(c);
 				//set 1 to user row
 				col.set(i, 1);
-				//add that column
+				//add that column as jth index
 				tagging.add(col);
 			} else { //otherwise
 				//get column for jth tag
