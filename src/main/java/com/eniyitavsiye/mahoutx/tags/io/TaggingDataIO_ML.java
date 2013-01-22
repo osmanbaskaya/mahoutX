@@ -7,6 +7,7 @@ package com.eniyitavsiye.mahoutx.tags.io;
 import com.eniyitavsiye.mahoutx.common.UserItemIDIndexMapFunction;
 import com.eniyitavsiye.mahoutx.tags.TaggingData;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
@@ -16,11 +17,15 @@ import java.io.IOException;
  */
 public class TaggingDataIO_ML {
 
-	private String filename;
+	private File filename;
 	private static final String COL_DELIMITER = "::";
 
 	public TaggingDataIO_ML(String filename) {
-		this.filename = filename;
+		this(new File(filename));
+	}
+
+	public TaggingDataIO_ML(File file) {
+		this.filename = file;
 	}
 
 	public TaggingData readTaggingData(UserItemIDIndexMapFunction indexMap) throws IOException {
