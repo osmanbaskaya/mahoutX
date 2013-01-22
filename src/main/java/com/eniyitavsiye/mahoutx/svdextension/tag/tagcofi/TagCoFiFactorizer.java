@@ -94,7 +94,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		if (userTagMatrix != null) {
 			throw new IllegalStateException("userTagMatrix is null! Before trying to build the model, set it first.");
 		}
-		Matrix R = extractRatings();
+		Matrix R = extractRatingsKillDataModel();
 		Matrix Z = computeTF_IDF(); //from tags
 		Matrix S = similarityCalculator.calculateSimilarityFrom(Z, userTagMatrix);
 
@@ -160,7 +160,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		return vec;
 	}
 
-	private Matrix extractRatings() throws TasteException {
+	private Matrix extractRatingsKillDataModel() throws TasteException {
 		Matrix r = new SparseMatrix(N, M);
 		LongPrimitiveIterator it = dataModel.getUserIDs();
 		while (it.hasNext()) {
@@ -172,6 +172,8 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 				r.set(u, i, userPrefs.getValue(i));
 			}
 		}
+		//from now on, this class does not need dataModel anymore.
+		dataModel = null;
 		return r;
 	}
 
@@ -425,15 +427,15 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 			Vector tagsOfUserJ = tag.viewRow(j);
 
 			Vector ijmtimes = tagsOfUserI.clone().assign(tagsOfUserJ, new DoubleDoubleFunction() {
-					@Override
-					public double apply(double arg1, double arg2) {
-						return arg1 * arg2;
-					}
+				@Override
+				public double apply(double arg1, double arg2) {
+					return arg1 * arg2;
+				}
 
-				});
-				Iterator<Element> commonTags = ijmtimes.iterateNonZero();
-				return commonTags;
-			}
+			});
+			Iterator<Element> commonTags = ijmtimes.iterateNonZero();
+			return commonTags;
+		}
 	}
 	
 	private static boolean isValidValue(double sim) {
