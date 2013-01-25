@@ -7,8 +7,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.mahout.cf.taste.common.Refreshable;
 import org.apache.mahout.cf.taste.example.grouplens.GroupLensDataModel;
-import org.apache.mahout.cf.taste.impl.recommender.svd.ALSWRFactorizer;
-import org.apache.mahout.cf.taste.impl.recommender.svd.ExpectationMaximizationSVDFactorizer;
+import org.apache.mahout.cf.taste.example.kddcup.track1.svd.ParallelArraysSGDFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorizer;
 import org.apache.mahout.common.RandomUtils;
 
@@ -36,7 +35,7 @@ public class OnlineSVDRecommenderTest {
 		System.exit(0);
 		*/
 		
-		Factorizer factorizer = new ExpectationMaximizationSVDFactorizer(model, 10, 15);
+		Factorizer factorizer = new ParallelArraysSGDFactorizer(model, 10, 15);
   	RandomUtils.useTestSeed();
 		UserFactorUpdater userFactorUpdater = new StochasticGradientDescentUpdater(
 				0.05, 0.02);

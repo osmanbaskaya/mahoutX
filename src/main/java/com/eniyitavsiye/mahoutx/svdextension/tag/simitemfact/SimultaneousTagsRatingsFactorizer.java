@@ -4,19 +4,16 @@ package com.eniyitavsiye.mahoutx.svdextension.tag.simitemfact;
 
 
 import com.google.common.base.Preconditions;
-import java.util.List;
-import java.util.Random;
-
 import com.google.common.collect.Lists;
 import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.example.kddcup.track1.svd.ParallelArraysSGDFactorizer;
 import org.apache.mahout.cf.taste.impl.common.FullRunningAverage;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.impl.common.RunningAverage;
 import org.apache.mahout.cf.taste.impl.model.GenericPreference;
 import org.apache.mahout.cf.taste.impl.recommender.svd.AbstractFactorizer;
-import org.apache.mahout.cf.taste.impl.recommender.svd.ExpectationMaximizationSVDFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.model.Preference;
@@ -28,7 +25,7 @@ import org.slf4j.LoggerFactory;
 /** Calculates the SVD using an Expectation Maximization algorithm. */
 public final class SimultaneousTagsRatingsFactorizer extends AbstractFactorizer {
 
-  private static final Logger log = LoggerFactory.getLogger(ExpectationMaximizationSVDFactorizer.class);
+  private static final Logger log = LoggerFactory.getLogger(SimultaneousTagsRatingsFactorizer.class);
 
   private final double learningRate;
   /** Parameter used to prevent overfitting. 0.02 is a good value. */
