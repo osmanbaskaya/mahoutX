@@ -7,11 +7,11 @@ package com.eniyitavsiye.mahoutx.tags;
 import com.eniyitavsiye.mahoutx.common.UserItemIDIndexMapFunction;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.RandomAccessSparseVector;
 import org.apache.mahout.math.SparseColumnMatrix;
-import org.apache.mahout.math.SparseRowMatrix;
-import org.apache.mahout.math.Vector;
 
 /**
  *
@@ -24,15 +24,11 @@ public class TaggingData {
 	private Matrix itemTags;
 	private UserItemIDIndexMapFunction indexMap;
 
-	private TaggingData(int N, int M, int T) {
-		userTags = new SparseRowMatrix(N, T);
-		itemTags = new SparseRowMatrix(M, T);
-	}
-
-	public TaggingData(Tags tags, Matrix userTags, Matrix itemTags) {
+	public TaggingData(Tags tags, Matrix userTags, Matrix itemTags, UserItemIDIndexMapFunction indexMap) {
 		this.tags = tags;
 		this.userTags = userTags;
 		this.itemTags = itemTags;
+		this.indexMap = indexMap;
 	}
 
 	public Tags getTags() {
@@ -67,6 +63,10 @@ public class TaggingData {
 		return (int) userTags.viewColumn(tags.getTagIndex(tag)).zSum();
 	}
 
+	protected int getTagUsedTotalByItems(String tag) {
+		return (int) itemTags.viewColumn(tags.getTagIndex(tag)).zSum();
+	}
+
 	public static class Builder {
 
 		private Tags.Builder tagBuilder = new Tags.Builder();
@@ -89,41 +89,66 @@ public class TaggingData {
 			int userIndex = indexMap.userIndex(userId);
 			int itemIndex = indexMap.itemIndex(itemId);
 
+			//WARN : 1689 users out of 69878 does not have a rating data but have 
+			//tagging data!!!
+
 			incMat(userTagging, userIndex, tagIndex, indexMap.getUserCount());
 			incMat(itemTagging, itemIndex, tagIndex, indexMap.getItemCount());
 		}
 
 		public TaggingData done() {
+			//TODO maybe prune tags with zero tagging count.
 			List<RandomAccessSparseVector> it = this.itemTagging;
 			List<RandomAccessSparseVector> ut = this.userTagging;
 			userTagging = null;
 			itemTagging = null;
 			Tags tags = tagBuilder.done();
-			return new TaggingData(
-							tags, 
-							new SparseColumnMatrix(
-									indexMap.getUserCount(), 
-									tags.getTagCount(),
-									it.toArray(new RandomAccessSparseVector[0])),
-							new SparseColumnMatrix(
-									indexMap.getUserCount(), 
-									tags.getTagCount(),
-									ut.toArray(new RandomAccessSparseVector[0])));
+
+			//crazy Mahout bug! :D  in SparseColumnMatrix constructor that takes Vector arr.
+			int T = tags.getTagCount();
+			Matrix userMat = new SparseColumnMatrix(
+							indexMap.getUserCount(), T,
+							ut.toArray(new RandomAccessSparseVector[T]));
+
+			Matrix itemMat = new SparseColumnMatrix(
+							indexMap.getItemCount(), T, 
+							it.toArray(new RandomAccessSparseVector[T]));
+			return new TaggingData(tags, userMat, itemMat, indexMap);
 		}
 
-		private void incMat(List<RandomAccessSparseVector> tagging, int i, int j, int c) {
+		/**
+		 * Increments ijth index at given matrix with <code>tagging</code>, returns 
+		 * <code>true</code> if could be incremented therefore there exists a cell, 
+		 * <code>false</code> otherwise.
+		 * 
+		 * @param tagging
+		 * @param i
+		 * @param j
+		 * @param c
+		 * @return 
+		 */
+		private boolean incMat(List<RandomAccessSparseVector> tagging, int i, int j, int c) {
+			RandomAccessSparseVector col;
+
 			if (j >= tagging.size()) { // if a new tag has come
 				//create a sparse vector 
-				RandomAccessSparseVector col = new RandomAccessSparseVector(c);
-				//set 1 to user row
-				col.set(i, 1);
+				col = new RandomAccessSparseVector(c);
 				//add that column as jth index
 				tagging.add(col);
+
 			} else { //otherwise
 				//get column for jth tag
-				Vector col = tagging.get(j);
+				col = tagging.get(j);
+			}
+			if (i >= c) {
+				Logger.getLogger(getClass().getName()).log(Level.WARNING, 
+								"Index discarded for not being in rating data {0} >= {1}", 
+								new Object[] {i, c});
+				return false;
+			} else {
 				//increment ith user's/item's usage by 1
 				col.set(i, col.get(i) + 1);
+				return true;
 			}
 		}
 
