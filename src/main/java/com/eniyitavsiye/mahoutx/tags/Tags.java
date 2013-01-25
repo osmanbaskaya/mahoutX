@@ -6,6 +6,7 @@ package com.eniyitavsiye.mahoutx.tags;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  *
@@ -46,17 +47,17 @@ public class Tags {
 
 		public boolean holds(String tag);
 
-		public abstract class AbstractTagPredicate implements TagPredicate {
+		public abstract class TagPredicateWithData implements TagPredicate {
 
 			protected TaggingData data;
 
-			public AbstractTagPredicate(TaggingData data) {
+			public TagPredicateWithData(TaggingData data) {
 				this.data = data;
 			}
 			
 		}
 
-		public class TaggingLessThan extends AbstractTagPredicate {
+		public class TaggingLessThan extends TagPredicateWithData {
 
 			private int threshold;
 
@@ -72,18 +73,23 @@ public class Tags {
 			
 		}
 
-		public class LengthNameMoreThan extends AbstractTagPredicate {
+		public class NameLengthMoreThan implements TagPredicate {
 
 			private int threshold;
-
-			public LengthNameMoreThan(TaggingData data, int threshold) {
-				super(data);
-				this.threshold = threshold;
-			}
 
 			@Override
 			public boolean holds(String tag) {
 				return tag.length() > threshold;
+			}
+
+		}
+
+		public class NotWord implements TagPredicate {
+			private static Pattern numeric = Pattern.compile("\\W+");
+
+			@Override
+			public boolean holds(String tag) {
+				return !numeric.matcher(tag).find();
 			}
 
 		}
