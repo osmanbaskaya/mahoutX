@@ -285,7 +285,15 @@ public class OnlineSVDRecommender extends AbstractRecommender {
     //log.debug("Recommending items for user ID '{}'", userID);
 
     PreferenceArray preferencesFromUser = getDataModel().getPreferencesFromUser(userID);
+		long[] preferredIds = preferencesFromUser.getIDs();
+		
     FastIDSet possibleItemIDs = getAllOtherItems(userID, preferencesFromUser);
+
+		for (long id : preferredIds) {
+			if (possibleItemIDs.contains(id)) {
+				log.log(Level.SEVERE, "id should not be in candidate set: {0}", id);
+			}
+		}
 
     List<RecommendedItem> topItems = TopItems.getTopItems(howMany, possibleItemIDs.iterator(), rescorer,
         new Estimator<Long>() {
