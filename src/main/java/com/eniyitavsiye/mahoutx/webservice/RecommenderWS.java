@@ -61,9 +61,9 @@ public class RecommenderWS {
 
             FactorizationCachingFactorizer cachingFactorizer = 
 										new FactorizationCachingFactorizer(
-										new ParallelArraysSGDFactorizer(reloadModel, 2, 2));
+										new ParallelArraysSGDFactorizer(replaceableModel, 2, 2));
 
-            Recommender recommender = new OnlineSVDRecommender(reloadModel, cachingFactorizer);
+            Recommender recommender = new OnlineSVDRecommender(replaceableModel, cachingFactorizer);
 						replaceableModel.setDelegate(mySqlModel);
             log.log(Level.INFO, "Data loading and training done.");
 
@@ -86,6 +86,10 @@ public class RecommenderWS {
             @WebParam(name = "tagstring") String tagstring,
             @WebParam(name = "offset") int offset,
             @WebParam(name = "length") int length) {
+			if (tagstring == null) {
+				tagstring = "";
+			}
+			tagstring = tagstring.trim();
 
         try {
             log.log(Level.INFO, "Entering getRecommendationList for user {0} in context {1}.",
