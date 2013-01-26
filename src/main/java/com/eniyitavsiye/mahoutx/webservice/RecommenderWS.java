@@ -2,6 +2,7 @@ package com.eniyitavsiye.mahoutx.webservice;
 
 import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
 import com.eniyitavsiye.mahoutx.common.LimitMySQLJDBCDataModel;
+import com.eniyitavsiye.mahoutx.common.ReplaceableDataModel;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import com.eniyitavsiye.mahoutx.svdextension.online.OnlineSVDRecommender;
@@ -55,20 +56,16 @@ public class RecommenderWS {
             log.log(Level.INFO, "buildItemSimilarityMatrix starts.");
 
             DBUtil dbUtil = new DBUtil();
-            LimitMySQLJDBCDataModel model = new LimitMySQLJDBCDataModel(new ConnectionPoolDataSource(dbUtil.getDataSource()), context + "_rating", "user_id", "item_id", "rating", null);
-            ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(model);
+            LimitMySQLJDBCDataModel mySqlModel = new LimitMySQLJDBCDataModel(new ConnectionPoolDataSource(dbUtil.getDataSource()), context + "_rating", "user_id", "item_id", "rating", null);
+            ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(mySqlModel);
+						ReplaceableDataModel replaceableModel = new ReplaceableDataModel(reloadModel);
 
             FactorizationCachingFactorizer cachingFactorizer = 
 										new FactorizationCachingFactorizer(
 										new ParallelArraysSGDFactorizer(reloadModel, 25, 25));
-						StochasticGradientDescentUpdater updater = 
-										new StochasticGradientDescentUpdater(
-										ParallelArraysSGDFactorizer.DEFAULT_LEARNING_RATE, 
-										ParallelArraysSGDFactorizer.DEFAULT_PREVENT_OVERFITTING);
 
-            Recommender recommender = new OnlineSVDRecommender(reloadModel, cachingFactorizer, updater);
-						updater.setRecommender(recommender);
-										//new SVDRecommender(reloadModel, cachingFactorizer);
+            Recommender recommender = new OnlineSVDRecommender(reloadModel, cachingFactorizer);
+						replaceableModel.setDelegate(mySqlModel);
             log.log(Level.INFO, "Data loading and training done.");
 
             predictor.put(context, recommender);
