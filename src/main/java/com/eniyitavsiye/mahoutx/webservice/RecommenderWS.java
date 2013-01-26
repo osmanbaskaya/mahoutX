@@ -61,7 +61,7 @@ public class RecommenderWS {
 
             FactorizationCachingFactorizer cachingFactorizer = 
 										new FactorizationCachingFactorizer(
-										new ParallelArraysSGDFactorizer(reloadModel, 25, 25));
+										new ParallelArraysSGDFactorizer(reloadModel, 2, 2));
 
             Recommender recommender = new OnlineSVDRecommender(reloadModel, cachingFactorizer);
 						replaceableModel.setDelegate(mySqlModel);
@@ -310,7 +310,12 @@ public class RecommenderWS {
             predictor.put(context, recommender);
             factorizationCaches.put(context, cachingFactorizer);
 						*/
-		
+			String context = "test";
+			RecommenderWS recommenderWS = new RecommenderWS();
+			recommenderWS.buildModel(context);
+			recommenderWS.getRecommendationListPaginated(context, 1, "", 1, 100);
+
+			//recommenderWS.estimatePreference(context, 2, 1);
 		}
-		
+
 }
