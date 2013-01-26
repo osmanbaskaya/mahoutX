@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.mahout.cf.taste.common.NoSuchItemException;
+import org.apache.mahout.cf.taste.common.NoSuchUserException;
 import org.apache.mahout.cf.taste.common.Refreshable;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.FastByIDMap;
@@ -43,6 +44,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	 * back to user.
 	 */
 	private final FastByIDMap<FastIDSet> itemsOfUsers;
+	private final FastByIDMap<double[]> newUserFeatures;
 	private final FastIDSet foldInNecessaryUsers;
 
 	public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer)
@@ -50,6 +52,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		super(dataModel, new AllUnknownItemsCandidateItemsStrategy());
 		//this.userFactorUpdater = userFactorUpdater;
 		this.itemsOfUsers = new FastByIDMap<>();
+		this.newUserFeatures = new FastByIDMap<>();
 		this.foldInNecessaryUsers = new FastIDSet();
 		factorizationCachingFactorizer = new FactorizationCachingFactorizer(factorizer);
 		delegateRecommender = new SVDRecommender(dataModel, factorizationCachingFactorizer);
@@ -93,8 +96,18 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	public float estimatePreference(long userID, long itemID)
 					throws TasteException {
 		Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
-		if (foldInNecessaryUsers.contains(userID)) {
-			double[] userFeatures = foldIn(userID, getDataModel().getPreferencesFromUser(userID));
+		if (foldInNecessaryUsers.contains(userID) || newUserFeatures.containsKey(userID)) {
+			double[] userFeatures;
+			if (foldInNecessaryUsers.contains(userID)) {
+				userFeatures = foldIn(userID, getDataModel().getPreferencesFromUser(userID));
+				try {
+					System.arraycopy(userFeatures, 0, factorization.getUserFeatures(userID), 0, featureCount);
+				} catch (NoSuchUserException e) {
+					newUserFeatures.put(userID, userFeatures);
+				}
+			} else {
+				userFeatures = newUserFeatures.get(userID);
+			}
 			double[] itemFeatures = factorization.getItemFeatures(itemID);
 			double estimate = 0;
 			for (int feature = 0; feature < userFeatures.length; feature++) {
