@@ -42,13 +42,14 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	 */
 	private final FastByIDMap<FastIDSet> itemsOfUsers;
 	
-	private FastByIDMap<Boolean> foldInNecessary;
+	private final FastByIDMap<Boolean> foldInNecessary;
 
 	public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer) 
 					throws TasteException {
 		super(dataModel);
 		//this.userFactorUpdater = userFactorUpdater;
 		this.itemsOfUsers = new FastByIDMap<>();
+		this.foldInNecessary = new FastByIDMap<>();
 		factorizationCachingFactorizer = new FactorizationCachingFactorizer(factorizer);
 		delegateRecommender = new SVDRecommender(dataModel, factorizationCachingFactorizer);
 		featureCount = factorizationCachingFactorizer.getCachedFactorization().numFeatures();
