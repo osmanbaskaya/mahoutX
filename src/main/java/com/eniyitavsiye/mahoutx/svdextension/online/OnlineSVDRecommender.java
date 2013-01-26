@@ -13,6 +13,7 @@ import org.apache.mahout.cf.taste.impl.common.FastByIDMap;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.impl.recommender.AbstractRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.AllUnknownItemsCandidateItemsStrategy;
 import org.apache.mahout.cf.taste.impl.recommender.TopItems;
 import org.apache.mahout.cf.taste.impl.recommender.TopItems.Estimator;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
@@ -31,9 +32,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	static {
 		log.setLevel(Level.ALL);
 	}
-
 	private static final double MIN_FEAT_NORM = 0.0000000001;
-
 	private final FactorizationCachingFactorizer factorizationCachingFactorizer;
 	private final SVDRecommender delegateRecommender;
 	private final int featureCount;
@@ -44,12 +43,11 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	 * back to user.
 	 */
 	private final FastByIDMap<FastIDSet> itemsOfUsers;
-	
 	private final FastIDSet foldInNecessaryUsers;
 
-	public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer) 
+	public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer)
 					throws TasteException {
-		super(dataModel);
+		super(dataModel, new AllUnknownItemsCandidateItemsStrategy());
 		//this.userFactorUpdater = userFactorUpdater;
 		this.itemsOfUsers = new FastByIDMap<>();
 		this.foldInNecessaryUsers = new FastIDSet();
@@ -93,15 +91,15 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 
 	@Override
 	public float estimatePreference(long userID, long itemID)
-			throws TasteException {
+					throws TasteException {
 		Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
 		if (foldInNecessaryUsers.contains(userID)) {
 			double[] userFeatures = foldIn(userID, getDataModel().getPreferencesFromUser(userID));
 			double[] itemFeatures = factorization.getItemFeatures(itemID);
-		    double estimate = 0;
-		    for (int feature = 0; feature < userFeatures.length; feature++) {
-		      estimate += userFeatures[feature] * itemFeatures[feature];
-		    }
+			double estimate = 0;
+			for (int feature = 0; feature < userFeatures.length; feature++) {
+				estimate += userFeatures[feature] * itemFeatures[feature];
+			}
 			return (float) estimate;
 		} else {
 			return delegateRecommender.estimatePreference(userID, itemID);
@@ -111,122 +109,121 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	public void addPreference(long userID, long itemID, float rat) throws TasteException {
 		foldInNecessaryUsers.add(userID);
 		/*
-		Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
-		FastIDSet preferredItems = itemsOfUsers.get(userID);
-		if (preferredItems == null) {
-			preferredItems = new FastIDSet();
-			itemsOfUsers.put(userID, preferredItems);
-		}
-		preferredItems.add(itemID);
+		 Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
+		 FastIDSet preferredItems = itemsOfUsers.get(userID);
+		 if (preferredItems == null) {
+		 preferredItems = new FastIDSet();
+		 itemsOfUsers.put(userID, preferredItems);
+		 }
+		 preferredItems.add(itemID);
 
-		//here we try to get the feature vector to update.
-		double[] features;
-		if (newUserFeatures.containsKey(userID)) { 
-			// CASE 2 : User does not exist at build time, but not first encounter			
-			// (rating after CASE 3)
-			features = newUserFeatures.get(userID);
-		} else {
-			try {
-				delegateRecommender.getDataModel().getPreferencesFromUser(userID);
-				// CASE 1 : User that exists at build time gives new rating  
-				features = factorization.getUserFeatures(userID);
-			} catch (NoSuchUserException e) {
-				// CASE 3 : User does not exist at build time, and first encounter
-				features = new double[featureCount];
-				newUserFeatures.put(userID, features);
-			}
-		}
-		userFactorUpdater.updateUserFactor(features, factorization, userID, itemID, rat);
-		*/
+		 //here we try to get the feature vector to update.
+		 double[] features;
+		 if (newUserFeatures.containsKey(userID)) { 
+		 // CASE 2 : User does not exist at build time, but not first encounter			
+		 // (rating after CASE 3)
+		 features = newUserFeatures.get(userID);
+		 } else {
+		 try {
+		 delegateRecommender.getDataModel().getPreferencesFromUser(userID);
+		 // CASE 1 : User that exists at build time gives new rating  
+		 features = factorization.getUserFeatures(userID);
+		 } catch (NoSuchUserException e) {
+		 // CASE 3 : User does not exist at build time, and first encounter
+		 features = new double[featureCount];
+		 newUserFeatures.put(userID, features);
+		 }
+		 }
+		 userFactorUpdater.updateUserFactor(features, factorization, userID, itemID, rat);
+		 */
 	}
 
 	/*
-	@Override
-	public List<RecommendedItem> recommend(final long userID, int howMany,
-			IDRescorer rescorer) throws TasteException {
-		//Preconditions.checkArgument(howMany >= 1, "howMany must be at least 1");
-		//log.debug("Recommending items for user ID '{}'", userID);
+	 @Override
+	 public List<RecommendedItem> recommend(final long userID, int howMany,
+	 IDRescorer rescorer) throws TasteException {
+	 //Preconditions.checkArgument(howMany >= 1, "howMany must be at least 1");
+	 //log.debug("Recommending items for user ID '{}'", userID);
 	
 	
-		FastIDSet possibleItemIDs;
-		PreferenceArray preferencesFromUser;
-		FastIDSet newlyRatedItems = itemsOfUsers.get(userID); 
-		if (newUserFeatures.containsKey(userID)) {
-			preferencesFromUser = new GenericUserPreferenceArray(newlyRatedItems.size());
-			int i = 0;
-			for (final long id : newlyRatedItems) {
-				preferencesFromUser.set(i++, new Preference() {
+	 FastIDSet possibleItemIDs;
+	 PreferenceArray preferencesFromUser;
+	 FastIDSet newlyRatedItems = itemsOfUsers.get(userID); 
+	 if (newUserFeatures.containsKey(userID)) {
+	 preferencesFromUser = new GenericUserPreferenceArray(newlyRatedItems.size());
+	 int i = 0;
+	 for (final long id : newlyRatedItems) {
+	 preferencesFromUser.set(i++, new Preference() {
 					
-					@Override
-					public void setValue(float value) {
-						throw new UnsupportedOperationException("Cannot set!");
-					}
+	 @Override
+	 public void setValue(float value) {
+	 throw new UnsupportedOperationException("Cannot set!");
+	 }
 					
-					@Override
-					public float getValue() {
-						return 1;
-					}
+	 @Override
+	 public float getValue() {
+	 return 1;
+	 }
 					
-					@Override
-					public long getUserID() {
-						return userID;
-					}
+	 @Override
+	 public long getUserID() {
+	 return userID;
+	 }
 					
-					@Override
-					public long getItemID() {
-						return id;
-					}
-				});
-			}
-		} else {
-			preferencesFromUser = getDataModel().getPreferencesFromUser(userID);
-		}
+	 @Override
+	 public long getItemID() {
+	 return id;
+	 }
+	 });
+	 }
+	 } else {
+	 preferencesFromUser = getDataModel().getPreferencesFromUser(userID);
+	 }
 
-		// here we assume userID is not used by candidate item strategy!
-		// we assumed PreferredItemsNeighborhoodCandidateItemsStrategy is used.
-		possibleItemIDs = getAllOtherItems(userID, preferencesFromUser);
-		//following might be unnecessary:
-		if (newlyRatedItems != null) {
-			possibleItemIDs.removeAll(newlyRatedItems);	
-		}
+	 // here we assume userID is not used by candidate item strategy!
+	 // we assumed PreferredItemsNeighborhoodCandidateItemsStrategy is used.
+	 possibleItemIDs = getAllOtherItems(userID, preferencesFromUser);
+	 //following might be unnecessary:
+	 if (newlyRatedItems != null) {
+	 possibleItemIDs.removeAll(newlyRatedItems);	
+	 }
 		
-		List<RecommendedItem> topItems = TopItems.getTopItems(howMany, possibleItemIDs.iterator(), rescorer,
-				new TopItems.Estimator<Long>() {
+	 List<RecommendedItem> topItems = TopItems.getTopItems(howMany, possibleItemIDs.iterator(), rescorer,
+	 new TopItems.Estimator<Long>() {
 			
-			@Override
-			public double estimate(Long itemID) throws TasteException {
-				return estimatePreference(userID, itemID);
-			}
-		});
-		//log.debug("Recommendations are: {}", topItems);
+	 @Override
+	 public double estimate(Long itemID) throws TasteException {
+	 return estimatePreference(userID, itemID);
+	 }
+	 });
+	 //log.debug("Recommendations are: {}", topItems);
 
-		return topItems;
-	}
-	*/
+	 return topItems;
+	 }
+	 */
 
-/*
-	@Override
-	public List<RecommendedItem> recommend(final long userID, int howMany, 
-			final IDRescorer rescorer) throws TasteException {
+	/*
+	 @Override
+	 public List<RecommendedItem> recommend(final long userID, int howMany, 
+	 final IDRescorer rescorer) throws TasteException {
 
-		return delegateRecommender.recommend(userID, howMany, new IDRescorer() {
+	 return delegateRecommender.recommend(userID, howMany, new IDRescorer() {
 
-			@Override
-			public double rescore(long id, double originalScore) {
-				return rescorer == null ? 
-								originalScore : 
-								rescorer.rescore(id, originalScore);
-			}
+	 @Override
+	 public double rescore(long id, double originalScore) {
+	 return rescorer == null ? 
+	 originalScore : 
+	 rescorer.rescore(id, originalScore);
+	 }
 
-			@Override
-			public boolean isFiltered(long id) {
-				return itemsOfUsers.get(userID).contains(id) 
-								|| (rescorer == null ? false : rescorer.isFiltered(id));
-			}
-		});
-	}
-*/
-
+	 @Override
+	 public boolean isFiltered(long id) {
+	 return itemsOfUsers.get(userID).contains(id) 
+	 || (rescorer == null ? false : rescorer.isFiltered(id));
+	 }
+	 });
+	 }
+	 */
 	@Override
 	public void refresh(Collection<Refreshable> alreadyRefreshed) {
 		// rebuild system in an offline manner
@@ -237,11 +234,11 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	}
 
 	/**
-	 * Extracts singular values S from existing user/item feature matrices and 
+	 * Extracts singular values S from existing user/item feature matrices and
 	 * ratings.
-	 * 
+	 *
 	 * @param dataModel
-	 * @throws TasteException 
+	 * @throws TasteException
 	 */
 	private void extractSingularValues(DataModel dataModel) throws TasteException {
 		Factorization fact = factorizationCachingFactorizer.getCachedFactorization();
@@ -279,33 +276,23 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	}
 
 	@Override
-	public List<RecommendedItem> recommend(final long userID, int howMany, 
-			IDRescorer rescorer) throws TasteException {
-    //Preconditions.checkArgument(howMany >= 1, "howMany must be at least 1");
-    //log.debug("Recommending items for user ID '{}'", userID);
+	public List<RecommendedItem> recommend(final long userID, int howMany,
+					IDRescorer rescorer) throws TasteException {
+		//Preconditions.checkArgument(howMany >= 1, "howMany must be at least 1");
+		//log.debug("Recommending items for user ID '{}'", userID);
 
-    PreferenceArray preferencesFromUser = getDataModel().getPreferencesFromUser(userID);
-		long[] preferredIds = preferencesFromUser.getIDs();
-		
-    FastIDSet possibleItemIDs = getAllOtherItems(userID, preferencesFromUser);
+		PreferenceArray preferencesFromUser = getDataModel().getPreferencesFromUser(userID);
+		FastIDSet possibleItemIDs = getAllOtherItems(userID, preferencesFromUser);
 
-		for (long id : preferredIds) {
-			if (possibleItemIDs.contains(id)) {
-				log.log(Level.SEVERE, "id should not be in candidate set: {0}", id);
-			}
-		}
+		List<RecommendedItem> topItems = TopItems.getTopItems(howMany, possibleItemIDs.iterator(), rescorer,
+						new Estimator<Long>() {
+							@Override
+							public double estimate(Long itemID) throws TasteException {
+								return estimatePreference(userID, itemID);
+							}
+						});
+		//log.debug("Recommendations are: {}", topItems);
 
-    List<RecommendedItem> topItems = TopItems.getTopItems(howMany, possibleItemIDs.iterator(), rescorer,
-        new Estimator<Long>() {
-
-				@Override
-				public double estimate(Long itemID) throws TasteException {
-					return estimatePreference(userID, itemID);
-				}
-		});
-    //log.debug("Recommendations are: {}", topItems);
-
-    return topItems;
+		return topItems;
 	}
-
 }
