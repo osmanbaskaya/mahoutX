@@ -62,8 +62,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		double featurePrefs[] = new double[nf];
 		Arrays.fill(featurePrefs, 0.0);
 
-		//TODO fix here.
-		log.debug("Folding in with preferences {0}." + ratings, ratings);
+		log.debug("Folding in with preferences {}.", ratings);
 
 		Factorization fact = factorizationCachingFactorizer.getCachedFactorization();
 		try {
