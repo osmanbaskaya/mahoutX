@@ -10,7 +10,7 @@ public class FactorizationCachingFactorizer implements Factorizer {
 
 	private Factorization cachedFactorization;
 	private Factorizer delegate;
-	
+
 	public Factorization getCachedFactorization() {
 		return cachedFactorization;
 	}
