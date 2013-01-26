@@ -6,7 +6,6 @@ import com.eniyitavsiye.mahoutx.common.ReplaceableDataModel;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import com.eniyitavsiye.mahoutx.svdextension.online.OnlineSVDRecommender;
-import com.eniyitavsiye.mahoutx.svdextension.online.StochasticGradientDescentUpdater;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;

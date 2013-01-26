@@ -45,14 +45,14 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	 */
 	private final FastByIDMap<FastIDSet> itemsOfUsers;
 	
-	private final FastByIDMap<Boolean> foldInNecessary;
+	private final FastIDSet foldInNecessaryUsers;
 
 	public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer) 
 					throws TasteException {
 		super(dataModel);
 		//this.userFactorUpdater = userFactorUpdater;
 		this.itemsOfUsers = new FastByIDMap<>();
-		this.foldInNecessary = new FastByIDMap<>();
+		this.foldInNecessaryUsers = new FastIDSet();
 		factorizationCachingFactorizer = new FactorizationCachingFactorizer(factorizer);
 		delegateRecommender = new SVDRecommender(dataModel, factorizationCachingFactorizer);
 		featureCount = factorizationCachingFactorizer.getCachedFactorization().numFeatures();
@@ -80,7 +80,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 				}
 				++i;
 			}
-			foldInNecessary.put(user, false);
+			foldInNecessaryUsers.remove(user);
 		} catch (NoSuchItemException ex) {
 			log.log(Level.SEVERE, "Non-existent items!", ex);
 			throw new RuntimeException("Non-existent items!", ex);
@@ -95,7 +95,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	public float estimatePreference(long userID, long itemID)
 			throws TasteException {
 		Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
-		if (foldInNecessary.get(userID)) {
+		if (foldInNecessaryUsers.contains(userID)) {
 			double[] userFeatures = foldIn(userID, getDataModel().getPreferencesFromUser(userID));
 			double[] itemFeatures = factorization.getItemFeatures(itemID);
 		    double estimate = 0;
@@ -109,7 +109,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	}
 
 	public void addPreference(long userID, long itemID, float rat) throws TasteException {
-		foldInNecessary.put(userID, true);
+		foldInNecessaryUsers.add(userID);
 		/*
 		Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
 		FastIDSet preferredItems = itemsOfUsers.get(userID);
