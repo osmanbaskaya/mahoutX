@@ -96,27 +96,25 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	public float estimatePreference(long userID, long itemID)
 					throws TasteException {
 		Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
-		if (foldInNecessaryUsers.contains(userID) || newUserFeatures.containsKey(userID)) {
-			double[] userFeatures;
-			if (foldInNecessaryUsers.contains(userID)) {
-				userFeatures = foldIn(userID, getDataModel().getPreferencesFromUser(userID));
-				try {
-					System.arraycopy(userFeatures, 0, factorization.getUserFeatures(userID), 0, featureCount);
-				} catch (NoSuchUserException e) {
-					newUserFeatures.put(userID, userFeatures);
-				}
-			} else {
-				userFeatures = newUserFeatures.get(userID);
+		double[] userFeatures;
+		if (foldInNecessaryUsers.contains(userID)) {
+			userFeatures = foldIn(userID, getDataModel().getPreferencesFromUser(userID));
+			try {
+				System.arraycopy(userFeatures, 0, factorization.getUserFeatures(userID), 0, featureCount);
+			} catch (NoSuchUserException e) {
+				newUserFeatures.put(userID, userFeatures);
 			}
-			double[] itemFeatures = factorization.getItemFeatures(itemID);
-			double estimate = 0;
-			for (int feature = 0; feature < userFeatures.length; feature++) {
-				estimate += userFeatures[feature] * itemFeatures[feature];
-			}
-			return (float) estimate;
+		} else if (newUserFeatures.containsKey(userID)) {
+			userFeatures = newUserFeatures.get(userID);
 		} else {
-			return delegateRecommender.estimatePreference(userID, itemID);
+			userFeatures = factorization.getUserFeatures(userID);
 		}
+		double[] itemFeatures = factorization.getItemFeatures(itemID);
+		double estimate = 0;
+		for (int feature = 0; feature < userFeatures.length; feature++) {
+			estimate += userFeatures[feature] * singularValues[feature] * itemFeatures[feature];
+		}
+		return (float) estimate;
 	}
 
 	public void addPreference(long userID, long itemID, float rat) throws TasteException {
