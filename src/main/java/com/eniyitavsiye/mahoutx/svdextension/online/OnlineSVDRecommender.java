@@ -4,8 +4,7 @@ import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.apache.log4j.Level;
 import org.apache.mahout.cf.taste.common.NoSuchItemException;
 import org.apache.mahout.cf.taste.common.Refreshable;
 import org.apache.mahout.cf.taste.common.TasteException;
@@ -23,8 +22,12 @@ import org.apache.mahout.cf.taste.model.Preference;
 import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.apache.mahout.cf.taste.recommender.IDRescorer;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class OnlineSVDRecommender extends AbstractRecommender {
+
+	private Logger log = LoggerFactory.getLogger(OnlineSVDRecommender.class);
 
 	private static final double MIN_FEAT_NORM = 0.0000000001;
 
@@ -41,8 +44,8 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	
 	private FastByIDMap<Boolean> foldInNecessary;
 
-	public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer, 
-					UserFactorUpdater userFactorUpdater) throws TasteException {
+	public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer) 
+					throws TasteException {
 		super(dataModel);
 		//this.userFactorUpdater = userFactorUpdater;
 		this.itemsOfUsers = new FastByIDMap<>();
@@ -59,6 +62,9 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		double featurePrefs[] = new double[nf];
 		Arrays.fill(featurePrefs, 0.0);
 
+		//TODO fix here.
+		log.debug("Folding in with preferences {0}." + ratings, ratings);
+
 		Factorization fact = factorizationCachingFactorizer.getCachedFactorization();
 		try {
 			int i = 0;
@@ -73,7 +79,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 			}
 			foldInNecessary.put(user, false);
 		} catch (NoSuchItemException ex) {
-			Logger.getLogger(OnlineSVDRecommender.class.getName()).log(Level.SEVERE, null, ex);
+			log.error("Non-existent items!", ex);
 			throw new RuntimeException("Non-existent items!", ex);
 		} finally {
 			//nothing to do here. :D
