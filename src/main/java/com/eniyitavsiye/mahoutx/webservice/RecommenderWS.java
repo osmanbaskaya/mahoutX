@@ -61,9 +61,9 @@ public class RecommenderWS {
 
             FactorizationCachingFactorizer cachingFactorizer = 
 										new FactorizationCachingFactorizer(
-										new ParallelArraysSGDFactorizer(replaceableModel, 25, 25));
+										new ParallelArraysSGDFactorizer(reloadModel, 25, 25));
 
-            Recommender recommender = new OnlineSVDRecommender(replaceableModel, cachingFactorizer);
+            Recommender recommender = new OnlineSVDRecommender(reloadModel, cachingFactorizer);
 						replaceableModel.setDelegate(mySqlModel);
             log.log(Level.INFO, "Data loading and training done.");
 
@@ -299,7 +299,7 @@ public class RecommenderWS {
         return ongoing != null && ongoing;
     }
 
-		public static void main(String[] args) {
+		public static void main(String[] args) throws Exception {
 			/*
 
 			DataModel reloadModel = 
