@@ -63,6 +63,14 @@ public class TaggingData {
 		return (int) userTags.viewColumn(tags.getTagIndex(tag)).zSum();
 	}
 
+	public int getUserTotalTagged(long userID) {
+		return (int) userTags.viewRow(indexMap.userIndex(userID)).zSum();
+	}
+
+	public int getItemTotalTagged(long itemID) {
+		return (int) itemTags.viewRow(indexMap.itemIndex(itemID)).zSum();
+	}
+
 	protected int getTagUsedTotalByItems(String tag) {
 		return (int) itemTags.viewColumn(tags.getTagIndex(tag)).zSum();
 	}
@@ -104,7 +112,6 @@ public class TaggingData {
 			itemTagging = null;
 			Tags tags = tagBuilder.done();
 
-			//crazy Mahout bug! :D  in SparseColumnMatrix constructor that takes Vector arr.
 			int T = tags.getTagCount();
 			Matrix userMat = new SparseColumnMatrix(
 							indexMap.getUserCount(), T,
