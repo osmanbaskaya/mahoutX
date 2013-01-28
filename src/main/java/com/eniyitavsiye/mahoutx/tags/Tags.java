@@ -14,15 +14,11 @@ import java.util.regex.Pattern;
  */
 public class Tags {
 
-	private int lastIndex = 0;
-	private Map<String, Integer> tagIndices;
-
-	private Tags() {
-		tagIndices = new HashMap<>();
-	}
+	private final Map<String, Integer> tagIndices;
 
 	public Tags(Map<String, Integer> tagIndices) {
 		this.tagIndices = new HashMap<>(tagIndices);
+		this.tags = new String[tagIndices.size()];
 	}
 
 	public int getTagIndex(String tag) {
@@ -118,24 +114,25 @@ public class Tags {
 
 	public static class Builder {
 
-		private Tags tags = new Tags();
+		private int lastIndex = 0;
+		private Map<String, Integer> tagIndices = new HashMap<>();
 
 		public int addTagGetIndex(String tag) {
-			if (tags == null) {
+			if (tagIndices == null) {
 				throw new IllegalStateException("This builder is already done building! Cannot add tags.");
 			}
-			if (!tags.tagIndices.containsKey(tag)) {
-				int index = tags.lastIndex;
-				tags.tagIndices.put(tag, tags.lastIndex++);
+			if (!tagIndices.containsKey(tag)) {
+				int index = lastIndex;
+				tagIndices.put(tag, lastIndex++);
 				return index;
 			} 
-			return tags.getTagIndex(tag);
+			return tagIndices.get(tag);
 		}
 
 		public Tags done() {
-			Tags retVal = tags;
-			tags = null;
-			return retVal;
+			Map<String, Integer> tagIndices_ = tagIndices;
+			tagIndices = null;
+			return new Tags(tagIndices_);
 		}
 
 	}
