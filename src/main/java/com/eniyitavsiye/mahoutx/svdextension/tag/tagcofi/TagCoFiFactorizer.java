@@ -200,9 +200,9 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		//tf(i,k) = userTagMatrix(i, k) / max(userTagMatrix(*, k))
 		//idf(i) = log(T/sum(userTagMatrix(i, *) != 0))
 		Vector idfs = userTagMatrix
-						.aggregateRows(new VectorCountNonZero())
-						.assign(new DivideConstantInverseLog(T));
-		Vector colMaxes = userTagMatrix.aggregateColumns(new VectorMax());
+						.aggregateRows(new CountNonZeroFunction())
+						.assign(new DivideConstantInverseLogFunction(T));
+		Vector colMaxes = userTagMatrix.aggregateColumns(new MaxFunction());
 		Matrix z = new SparseMatrix(N, T);
 
 		Iterator<MatrixSlice> matrixIterator = userTagMatrix.iterator();
@@ -286,7 +286,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		return vec;
 	}
 
-	private static class NonZeroToOne implements DoubleFunction {
+	private static class NonZeroToOneFunction implements DoubleFunction {
 
 		@Override
 		public double apply(double arg1) {
@@ -295,11 +295,11 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 
 	}
 
-	private static class DivideConstantInverseLog implements DoubleFunction {
+	private static class DivideConstantInverseLogFunction implements DoubleFunction {
 
 		private double logConstant;
 
-		private DivideConstantInverseLog(double constant) {
+		private DivideConstantInverseLogFunction(double constant) {
 			logConstant = Math.log(constant);
 		}
 
@@ -310,7 +310,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 
 	}
 
-	private class VectorMax implements VectorFunction {
+	private class MaxFunction implements VectorFunction {
 
 		@Override
 		public double apply(Vector f) {
@@ -319,11 +319,11 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 
 	}
 
-	private class VectorCountNonZero implements VectorFunction {
+	private class CountNonZeroFunction implements VectorFunction {
 
 		@Override
 		public double apply(Vector f) {
-			return f.aggregate(new PlusMult(1), new NonZeroToOne());
+			return f.aggregate(new PlusMult(1), new NonZeroToOneFunction());
 		}
 
 	}
