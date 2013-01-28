@@ -336,9 +336,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 				int N = z.columnSize();
 				Matrix s = new SparseMatrix(N, N);
 
-				Iterator<MatrixSlice> matIterator = s.iterateAll();
-				while (matIterator.hasNext()) {
-					MatrixSlice slice = matIterator.next();
+				for (MatrixSlice slice : s) {
 					int i = slice.index();
 					Iterator<Element> rowIterator = slice.vector().iterateNonZero();
 
@@ -379,9 +377,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 					}
 				});
 
-				Iterator<MatrixSlice> matIterator = s.iterateAll();
-				while (matIterator.hasNext()) {
-					MatrixSlice slice = matIterator.next();
+				for (MatrixSlice slice : s) {
 					int i = slice.index();
 					Iterator<Element> rowIterator = slice.vector().iterateNonZero();
 
@@ -416,9 +412,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 			public Matrix calculateSimilarityFrom(Matrix z, Matrix userTagMatrix) {
 				int N = z.columnSize();
 				Matrix m = new SparseMatrix(N, N);
-				Iterator<MatrixSlice> matIterator = m.iterateAll();
-				while (matIterator.hasNext()) {
-					MatrixSlice slice = matIterator.next();
+				for (MatrixSlice slice : m) {
 					int i = slice.index();
 					Iterator<Element> rowIterator = slice.vector().iterateNonZero();
 					while (rowIterator.hasNext()) {
