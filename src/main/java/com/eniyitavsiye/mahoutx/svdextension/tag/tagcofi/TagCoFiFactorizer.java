@@ -25,7 +25,6 @@ import org.apache.mahout.math.MatrixSlice;
 import org.apache.mahout.math.SparseMatrix;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.Vector.Element;
-import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.function.DoubleFunction;
 import org.apache.mahout.math.function.PlusMult;
 import org.apache.mahout.math.function.VectorFunction;
@@ -342,7 +341,10 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 
 					while(rowIterator.hasNext()) {
 						int j = rowIterator.next().index();
-
+						double oldVal = s.getQuick(i, j);
+						if (i <= j || isValidValue(oldVal)) {
+							continue;
+						}
 						Iterator<Element> commonTags = this.commonTagIterator(userTagMatrix, i, j);
 						double dot = 0;
 						double norm1 = 0;
@@ -350,14 +352,14 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 						while (commonTags.hasNext()) {
 							int k = commonTags.next().index();
 							double zik = z.get(i, k);
-							double zij = z.get(i, j);
-							dot += zik * zij;
+							double zjk = z.get(j, k);
+							dot += zik * zjk;
 							norm1 += zik * zik;
-							norm2 += zij * zij;
+							norm2 += zjk * zjk;
 						}
 						double sim = dot / Math.sqrt(norm1 * norm2);
 						if (isValidValue(sim)) {
-							s.set(i, j, sim);
+							s.setQuick(i, j, sim);
 						}
 					}
 				}
@@ -446,13 +448,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 			Vector tagsOfUserI = tag.viewRow(i);
 			Vector tagsOfUserJ = tag.viewRow(j);
 
-			Vector ijmtimes = tagsOfUserI.clone().assign(tagsOfUserJ, new DoubleDoubleFunction() {
-				@Override
-				public double apply(double arg1, double arg2) {
-					return arg1 * arg2;
-				}
-
-			});
+			Vector ijmtimes = tagsOfUserI.clone().assign(tagsOfUserJ, new PlusMult(1));
 			Iterator<Element> commonTags = ijmtimes.iterateNonZero();
 			return commonTags;
 		}
