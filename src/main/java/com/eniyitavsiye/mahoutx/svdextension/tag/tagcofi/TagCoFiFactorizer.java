@@ -92,7 +92,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 
 	@Override
 	public Factorization factorize() throws TasteException {
-		if (userTagMatrix != null) {
+		if (userTagMatrix == null) {
 			throw new IllegalStateException("userTagMatrix is null! Before trying to build the model, set it first.");
 		}
 		Matrix R = extractRatingsKillDataModel();
