@@ -12,6 +12,7 @@ import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.impl.recommender.svd.AbstractFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.model.DataModel;
+import org.apache.mahout.cf.taste.model.Preference;
 import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.math.DenseMatrix;
@@ -167,9 +168,9 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 			long userID = it.nextLong();
 			int u = userIndex(userID);
 			PreferenceArray userPrefs = dataModel.getPreferencesFromUser(userID);
-			for (long itemID : userPrefs.getIDs()) {
-				int i = itemIndex(itemID);
-				r.set(u, i, userPrefs.getValue(i));
+			for (Preference pref : userPrefs) {
+				int i = itemIndex(pref.getItemID());
+				r.set(u, i, pref.getValue());
 			}
 		}
 		//from now on, this class does not need dataModel anymore.
