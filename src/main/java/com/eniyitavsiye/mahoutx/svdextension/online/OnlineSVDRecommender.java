@@ -1,11 +1,16 @@
 package com.eniyitavsiye.mahoutx.svdextension.online;
 
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.commons.math.linear.Array2DRowRealMatrix;
+import org.apache.commons.math.linear.LUDecompositionImpl;
+import org.apache.commons.math.linear.OpenMapRealVector;
+import org.apache.commons.math.linear.RealMatrix;
+import org.apache.commons.math.linear.RealVector;
+import org.apache.commons.math.linear.SingularMatrixException;
 import org.apache.mahout.cf.taste.common.NoSuchItemException;
 import org.apache.mahout.cf.taste.common.NoSuchUserException;
 import org.apache.mahout.cf.taste.common.Refreshable;
@@ -38,7 +43,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	private final SVDRecommender delegateRecommender;
 	private final int featureCount;
 	//private final UserFactorUpdater userFactorUpdater;
-	private final double[] singularValues;
+	private double[] singularValues;
 	/**
 	 * We keep track of rated items after build, so that we don't recommend them
 	 * back to user.
@@ -47,7 +52,14 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	private final FastByIDMap<double[]> newUserFeatures;
 	private final FastIDSet foldInNecessaryUsers;
 
-	public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer)
+	private final boolean seanMethod;
+
+	private RealMatrix vTransposeRightInverse;
+	private FastByIDMap<Integer> itemOrder;
+
+	private int numItems;
+
+	public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer, boolean seanMethod)
 					throws TasteException {
 		super(dataModel, new AllUnknownItemsCandidateItemsStrategy());
 		//this.userFactorUpdater = userFactorUpdater;
@@ -57,15 +69,28 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		factorizationCachingFactorizer = new FactorizationCachingFactorizer(factorizer);
 		delegateRecommender = new SVDRecommender(dataModel, factorizationCachingFactorizer);
 		featureCount = factorizationCachingFactorizer.getCachedFactorization().numFeatures();
-		this.singularValues = new double[featureCount];
-		extractSingularValues(dataModel);
+		numItems = dataModel.getNumItems();
+		this.seanMethod = seanMethod;
+		if (!seanMethod) {
+			extractSingularValues(dataModel);
+		} else {
+			calculateVTransposeRightInverse(dataModel);
+		}
 	}
 
-	public double[] foldIn(long user, PreferenceArray ratings) {
+  private static FastByIDMap<Integer> createIDMapping(int size, LongPrimitiveIterator idIterator) {
+    FastByIDMap<Integer> mapping = new FastByIDMap<>(size);
+    int index = 0;
+    while (idIterator.hasNext()) {
+      mapping.put(idIterator.nextLong(), index++);
+    }
+    return mapping;
+  }
+
+	public double[] foldInSingular(long user, PreferenceArray ratings) {
 		final int nf = featureCount;
 		final double[] svals = singularValues;
 		double featurePrefs[] = new double[nf];
-		Arrays.fill(featurePrefs, 0.0);
 
 		log.log(Level.INFO, "Folding in with preferences {0}.", ratings);
 
@@ -92,6 +117,22 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		return featurePrefs;
 	}
 
+	public double[] foldInSean(long user, PreferenceArray ratings) {
+		RealVector a_u = new OpenMapRealVector(numItems, ratings.length());
+		for (Preference p : ratings) {
+			a_u.setEntry(itemOrder.get(p.getItemID()), p.getValue());
+		}
+		return vTransposeRightInverse.preMultiply(a_u).getData();
+	}
+
+	public double[] foldIn(long user, PreferenceArray ratings) {
+		if (seanMethod) {
+			return foldInSean(user, ratings);
+		} else {
+			return foldInSingular(user, ratings);
+		}
+	}
+
 	@Override
 	public float estimatePreference(long userID, long itemID)
 					throws TasteException {
@@ -112,7 +153,8 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		double[] itemFeatures = factorization.getItemFeatures(itemID);
 		double estimate = 0;
 		for (int feature = 0; feature < userFeatures.length; feature++) {
-			estimate += userFeatures[feature] * singularValues[feature] * itemFeatures[feature];
+			double singVal = seanMethod ? 1 : singularValues[feature];
+			estimate += userFeatures[feature] * singVal * itemFeatures[feature];
 		}
 		return (float) estimate;
 	}
@@ -252,6 +294,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	 * @throws TasteException
 	 */
 	private void extractSingularValues(DataModel dataModel) throws TasteException {
+		this.singularValues = new double[featureCount];
 		Factorization fact = factorizationCachingFactorizer.getCachedFactorization();
 		for (int feature = 0; feature < featureCount; feature++) {
 			double ussq = 0;
@@ -305,5 +348,28 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		//log.debug("Recommendations are: {}", topItems);
 
 		return topItems;
+	}
+
+	private void calculateVTransposeRightInverse(DataModel dataModel) throws RuntimeException, NullPointerException, IllegalArgumentException, NoSuchItemException, TasteException {
+		int numItems = dataModel.getNumItems();
+		itemOrder = new FastByIDMap<>(numItems);
+		double[][] array = new double[numItems][featureCount];
+		Factorization fact = factorizationCachingFactorizer.getCachedFactorization();
+		LongPrimitiveIterator itemIDIterator = dataModel.getItemIDs();
+		int ind = 0;
+		while (itemIDIterator.hasNext()) {
+			long id = itemIDIterator.nextLong();
+			array[ind] = fact.getItemFeatures(id);
+			itemOrder.put(id, ind);
+		}
+		this.vTransposeRightInverse = new Array2DRowRealMatrix(array);
+		RealMatrix inv = null;
+		try {
+			inv = new LUDecompositionImpl(vTransposeRightInverse.transpose().multiply(vTransposeRightInverse)).getSolver().getInverse();
+		} catch (SingularMatrixException e) {
+			log.log(Level.SEVERE, "Could not take right inverse of item feature matrix!", e);
+			throw new RuntimeException(e);
+		}
+		vTransposeRightInverse = vTransposeRightInverse.multiply(inv);
 	}
 }

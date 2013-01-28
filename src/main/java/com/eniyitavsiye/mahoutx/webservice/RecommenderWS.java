@@ -49,7 +49,9 @@ public class RecommenderWS {
     }
 
     @WebMethod(operationName = "buildModel")
-    public String buildModel(@WebParam(name = "context") String context) {
+    public String buildModel(
+						@WebParam(name = "context") String context,
+						@WebParam(name = "seanMethod") boolean seanMethod) {
         try {
             ongoingTrainingStates.put(context, Boolean.TRUE);
             log.log(Level.INFO, "buildItemSimilarityMatrix starts.");
@@ -63,7 +65,7 @@ public class RecommenderWS {
 										new FactorizationCachingFactorizer(
 										new ParallelArraysSGDFactorizer(replaceableModel, 2, 2));
 
-            Recommender recommender = new OnlineSVDRecommender(replaceableModel, cachingFactorizer);
+            Recommender recommender = new OnlineSVDRecommender(replaceableModel, cachingFactorizer, seanMethod);
 						replaceableModel.setDelegate(mySqlModel);
             log.log(Level.INFO, "Data loading and training done.");
 
@@ -313,11 +315,11 @@ public class RecommenderWS {
 
             predictor.put(context, recommender);
             factorizationCaches.put(context, cachingFactorizer);
-						*/
 			String context = "test";
 			RecommenderWS recommenderWS = new RecommenderWS();
 			recommenderWS.buildModel(context);
 			recommenderWS.getRecommendationListPaginated(context, 1, "", 1, 100);
+						*/
 
 			//recommenderWS.estimatePreference(context, 2, 1);
 		}
