@@ -6,6 +6,7 @@ import com.eniyitavsiye.mahoutx.common.ReplaceableDataModel;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import com.eniyitavsiye.mahoutx.svdextension.online.OnlineSVDRecommender;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -63,7 +64,7 @@ public class RecommenderWS {
 
             FactorizationCachingFactorizer cachingFactorizer = 
 										new FactorizationCachingFactorizer(
-										new ParallelArraysSGDFactorizer(replaceableModel, 2, 2));
+										new ParallelArraysSGDFactorizer(replaceableModel, 50, 20));
 
             Recommender recommender = new OnlineSVDRecommender(replaceableModel, cachingFactorizer, seanMethod);
 						replaceableModel.setDelegate(mySqlModel);
@@ -96,7 +97,7 @@ public class RecommenderWS {
         try {
             log.log(Level.INFO, "Entering getRecommendationList for user {0} in context {1}.",
                     new Object[]{userId, context});
-            List<RecommendedItem> recommendations = null;
+            List<RecommendedItem> recommendations;
             if (!tagstring.equals("")) {
                 DBUtil dbUtil = new DBUtil();
                 Collection<Long> specificItemIDsList = dbUtil.getItems(context, tagstring.split(","));
@@ -315,13 +316,17 @@ public class RecommenderWS {
 
             predictor.put(context, recommender);
             factorizationCaches.put(context, cachingFactorizer);
-			String context = "test";
-			RecommenderWS recommenderWS = new RecommenderWS();
-			recommenderWS.buildModel(context);
-			recommenderWS.getRecommendationListPaginated(context, 1, "", 1, 100);
 						*/
 
-			//recommenderWS.estimatePreference(context, 2, 1);
+			String context = "test";
+			RecommenderWS recommenderWS = new RecommenderWS();
+			recommenderWS.buildModel(context, true);
+
+			log.log(Level.INFO, "Beginning recommendation...");
+			log.log(Level.INFO, "Pre-foldin : {0}", Arrays.asList(recommenderWS.getRecommendationListPaginated(context, 1, "", 1, 100)));
+			recommenderWS.addPreference(context, 1, 200, (byte) 5);
+			log.log(Level.INFO, "Post-foldin : {0}", Arrays.asList(recommenderWS.getRecommendationListPaginated(context, 1, "", 1, 100)));
+			log.log(Level.INFO, "Done");
 		}
 
 }
