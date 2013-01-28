@@ -7,6 +7,8 @@ package com.eniyitavsiye.mahoutx.svdextension.tag.tagcofi;
 import com.eniyitavsiye.mahoutx.common.UserItemIDIndexMapFunction;
 import java.util.Iterator;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.impl.recommender.svd.AbstractFactorizer;
@@ -34,6 +36,8 @@ import org.apache.mahout.math.function.VectorFunction;
  */
 public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDIndexMapFunction {
 	
+	private static final Logger log = Logger.getLogger(TagCoFiFactorizer.class.getName());
+
 	///home/ceyhun/Dropbox/Projects/doctoral/dataset/MovieLens/10M100K
 	/**
 	 * Dispersion parameter for gaussian in euclidean-based similarity.
@@ -94,11 +98,16 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 	@Override
 	public Factorization factorize() throws TasteException {
 		if (userTagMatrix == null) {
-			throw new IllegalStateException("userTagMatrix is null! Before trying to build the model, set it first.");
+			RuntimeException e = new IllegalStateException("userTagMatrix is null! Before trying to build the model, set it first.");
+			log.log(Level.SEVERE, e.getMessage(), e);
+			throw e;
 		}
+		log.log(Level.INFO, "Factorization begins... delta:{0}, alpha:{1}, beta:{2}, W:{3}, D:{4}", 
+						new Object[] {delta, alpha, beta, W, D});
 		Matrix R = extractRatingsKillDataModel();
 		Matrix Z = computeTF_IDF(); //from tags
 		Matrix S = similarityCalculator.calculateSimilarityFrom(Z, userTagMatrix);
+		log.log(Level.INFO, "Similarity calculation completed. {0}", similarityCalculator);
 
 		//D = diagonal matrix with column sums of S.
 		//L = D - S (Laplacian)
@@ -109,11 +118,13 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 			}
 		})).minus(S);
 
+		log.log(Level.INFO, "Laplacian calculated.");
 		Matrix U = initRandom(D, N, 0.1);
 		Matrix V = initRandom(D, M, 0.1);
 
 		DiagonalMatrix alphaI = new DiagonalMatrix(alpha, M);
 		Matrix betaL = L.times(beta);
+		log.log(Level.INFO, "U and V matrices initialized, alphaI and betaL precalculated.");
 
 		//for each iteration
 		for (int w = 1; w <= W; ++w) {
@@ -132,8 +143,10 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 				Vector grad_f_Vj = (alphaI.plus(sumOuterUserFactorProducts(R, U, j))).times(Vj).minus(sumUserFactorWithJthItemRatings(R, U, j));
 				Vj.assign(Vj.minus(grad_f_Vj.times(delta)));
 			}
+			log.log(Level.INFO, "Iteration {0} completed.", w);
 		
 		}
+		log.log(Level.INFO, "Factorization completed successfully.");
 		return createFactorization(extractDoubleArray(U), extractDoubleArray(V));
 	}
 	
@@ -176,6 +189,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		}
 		//from now on, this class does not need dataModel anymore.
 		dataModel = null;
+		log.log(Level.INFO, "Rating data extracted.");
 		return r;
 	}
 
@@ -213,6 +227,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 
 			}
 		}
+		log.log(Level.INFO, "TF-IDF computation successful.");
 		return z;
 	}
 
