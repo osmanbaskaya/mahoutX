@@ -25,6 +25,7 @@ import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.Vector.Element;
 import org.apache.mahout.math.function.DoubleDoubleFunction;
 import org.apache.mahout.math.function.DoubleFunction;
+import org.apache.mahout.math.function.PlusMult;
 import org.apache.mahout.math.function.VectorFunction;
 
 /**
@@ -183,44 +184,11 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		//document: Tags
 		//terms   : user
 		//tf(i,k) = userTagMatrix(i, k) / max(userTagMatrix(*, k))
-		Vector idfs = userTagMatrix.aggregateRows(new VectorFunction() {
-
-			@Override
-			public double apply(Vector f) {
-				return f.aggregate(
-								new DoubleDoubleFunction() {
-
-					@Override
-					public double apply(double arg1, double arg2) {
-						return arg1 + arg2;
-					}
-				}, 
-								new DoubleFunction() {
-
-					@Override
-					public double apply(double arg1) {
-						return arg1 > 0 ? 1 : 0;
-					}
-				});
-
-			}
-		})
-															 .assign(new DoubleFunction() {
-
-			@Override
-			public double apply(double arg) {
-				return Math.log(T / arg);
-			}
-			
-		});
 		//idf(i) = log(T/sum(userTagMatrix(i, *) != 0))
-		Vector colMaxes = userTagMatrix.aggregateColumns(new VectorFunction() {
-
-			@Override
-			public double apply(Vector f) {
-				return f.maxValue();
-			}
-		});
+		Vector idfs = userTagMatrix
+						.aggregateRows(new VectorCountNonZero())
+						.assign(new DivideConstantInverseLog(T));
+		Vector colMaxes = userTagMatrix.aggregateColumns(new VectorMax());
 		Matrix z = new SparseMatrix(N, T);
 
 		Iterator<MatrixSlice> matrixIterator = userTagMatrix.iterator();
@@ -301,6 +269,48 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 			vec.assign(vec.plus(U.viewColumn(i).times(rij)));
 		}
 		return vec;
+	}
+
+	private static class NonZeroToOne implements DoubleFunction {
+
+		@Override
+		public double apply(double arg1) {
+			return arg1 != 0 ? 1 : 0;
+		}
+
+	}
+
+	private static class DivideConstantInverseLog implements DoubleFunction {
+
+		private double logConstant;
+
+		private DivideConstantInverseLog(double constant) {
+			logConstant = Math.log(constant);
+		}
+
+		@Override
+		public double apply(double arg) {
+			return logConstant - Math.log(arg);
+		}
+
+	}
+
+	private class VectorMax implements VectorFunction {
+
+		@Override
+		public double apply(Vector f) {
+			return f.maxValue();
+		}
+
+	}
+
+	private class VectorCountNonZero implements VectorFunction {
+
+		@Override
+		public double apply(Vector f) {
+			return f.aggregate(new PlusMult(1), new NonZeroToOne());
+		}
+
 	}
 
 	public enum SimilarityCalculator {
