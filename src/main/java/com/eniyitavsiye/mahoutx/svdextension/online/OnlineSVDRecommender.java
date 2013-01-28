@@ -361,6 +361,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 			long id = itemIDIterator.nextLong();
 			array[ind] = fact.getItemFeatures(id);
 			itemOrder.put(id, ind);
+			ind++;
 		}
 		this.vTransposeRightInverse = new Array2DRowRealMatrix(array);
 		RealMatrix inv = null;
