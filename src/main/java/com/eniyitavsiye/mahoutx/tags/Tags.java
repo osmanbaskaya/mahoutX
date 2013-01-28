@@ -15,14 +15,22 @@ import java.util.regex.Pattern;
 public class Tags {
 
 	private final Map<String, Integer> tagIndices;
+	private final String[] tags;
 
 	public Tags(Map<String, Integer> tagIndices) {
 		this.tagIndices = new HashMap<>(tagIndices);
 		this.tags = new String[tagIndices.size()];
+		for (Map.Entry<String, Integer> entry : tagIndices.entrySet()) {
+			tags[entry.getValue()] = entry.getKey();
+		}
 	}
 
 	public int getTagIndex(String tag) {
 		return tagIndices.get(tag);
+	}
+
+	public String getTagAtIndex(int index) {
+		return tags[index];
 	}
 
 	public int getTagCount() {
