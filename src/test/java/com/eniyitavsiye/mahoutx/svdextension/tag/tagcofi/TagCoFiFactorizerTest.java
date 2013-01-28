@@ -47,6 +47,7 @@ public class TagCoFiFactorizerTest {
 		factorizer = new TagCoFiFactorizer(model, 
 						TagCoFiFactorizer.SimilarityCalculator.COSINE, 10, 10, 0.1, 0.1, 0.1);
 		taggingData = instance.readTaggingData(factorizer);
+		factorizer.setUserTagMatrix(taggingData.getUserTaggingCountMatrix());
 	}
 	
 	@After
