@@ -118,6 +118,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	}
 
 	public double[] foldInSean(long user, PreferenceArray ratings) {
+		foldInNecessaryUsers.remove(user);
 		RealVector a_u = new OpenMapRealVector(numItems, ratings.length());
 		for (Preference p : ratings) {
 			a_u.setEntry(itemOrder.get(p.getItemID()), p.getValue());
@@ -351,7 +352,6 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	}
 
 	private void calculateVTransposeRightInverse(DataModel dataModel) throws RuntimeException, NullPointerException, IllegalArgumentException, NoSuchItemException, TasteException {
-		int numItems = dataModel.getNumItems();
 		itemOrder = new FastByIDMap<>(numItems);
 		double[][] array = new double[numItems][featureCount];
 		Factorization fact = factorizationCachingFactorizer.getCachedFactorization();
