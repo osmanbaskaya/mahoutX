@@ -96,7 +96,7 @@ public class TaggingDataIO_ML {
 				}
 				shouldAdd &= userExists;
 
-				boolean itemExists = indexMap.itemIndex(userID) < indexMap.getItemCount();
+				boolean itemExists = indexMap.itemIndex(itemID) < indexMap.getItemCount();
 				if (!itemExists) {
 					nonRatedItems.add(itemID);
 				}
