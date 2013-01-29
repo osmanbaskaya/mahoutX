@@ -10,13 +10,11 @@ import java.io.File;
 import org.apache.mahout.cf.taste.impl.model.file.FileDataModel;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.model.DataModel;
-import org.apache.mahout.math.Matrix;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
 /**
  *
@@ -56,7 +54,6 @@ public class TagCoFiFactorizerTest {
 
 	/**
 	 * Test of setUserTagMatrix method, of class TagCoFiFactorizer.
-	 */
 	@Test
 	public void testSetUserTagMatrix() {
 		System.out.println("setUserTagMatrix");
@@ -66,6 +63,7 @@ public class TagCoFiFactorizerTest {
 		// TODO review the generated test code and remove the default call to fail.
 		fail("The test case is a prototype.");
 	}
+	 */
 
 	/**
 	 * Test of factorize method, of class TagCoFiFactorizer.
@@ -83,7 +81,6 @@ public class TagCoFiFactorizerTest {
 
 	/**
 	 * Test of userIndex method, of class TagCoFiFactorizer.
-	 */
 	@Test
 	public void testUserIndex() {
 		System.out.println("userIndex");
@@ -95,10 +92,10 @@ public class TagCoFiFactorizerTest {
 		// TODO review the generated test code and remove the default call to fail.
 		fail("The test case is a prototype.");
 	}
+	 */
 
 	/**
 	 * Test of itemIndex method, of class TagCoFiFactorizer.
-	 */
 	@Test
 	public void testItemIndex() {
 		System.out.println("itemIndex");
@@ -110,10 +107,10 @@ public class TagCoFiFactorizerTest {
 		// TODO review the generated test code and remove the default call to fail.
 		fail("The test case is a prototype.");
 	}
+	 */
 
 	/**
 	 * Test of getUserCount method, of class TagCoFiFactorizer.
-	 */
 	@Test
 	public void testGetUserCount() {
 		System.out.println("getUserCount");
@@ -124,10 +121,10 @@ public class TagCoFiFactorizerTest {
 		// TODO review the generated test code and remove the default call to fail.
 		fail("The test case is a prototype.");
 	}
+	 */
 
 	/**
 	 * Test of getItemCount method, of class TagCoFiFactorizer.
-	 */
 	@Test
 	public void testGetItemCount() {
 		System.out.println("getItemCount");
@@ -138,4 +135,7 @@ public class TagCoFiFactorizerTest {
 		// TODO review the generated test code and remove the default call to fail.
 		fail("The test case is a prototype.");
 	}
+	 */
+
+
 }

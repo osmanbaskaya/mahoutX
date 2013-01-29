@@ -5,12 +5,16 @@
 package com.eniyitavsiye.mahoutx.svdextension.tag.tagcofi;
 
 import com.eniyitavsiye.mahoutx.common.UserItemIDIndexMapFunction;
+import com.eniyitavsiye.mahoutx.tags.TaggingData;
+import com.eniyitavsiye.mahoutx.tags.TaggingDataIO_ML;
+import java.io.File;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
+import org.apache.mahout.cf.taste.impl.model.file.FileDataModel;
 import org.apache.mahout.cf.taste.impl.recommender.svd.AbstractFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.model.DataModel;
@@ -470,4 +474,17 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		return M;
 	}
 
+	public static void main(String[] args) throws Exception {
+		DataModel model;
+		TaggingData taggingData;
+		TagCoFiFactorizer factorizer;
+		File root = new java.io.File("/home/ceyhun/Dropbox/Projects/doctoral/dataset/MovieLens/10M100K");
+		model = new FileDataModel(new File(root, "ratings.csv"));
+		TaggingDataIO_ML instance = new TaggingDataIO_ML(new File(root, "tags.dat"));
+		factorizer = new TagCoFiFactorizer(model, 
+						TagCoFiFactorizer.SimilarityCalculator.COSINE, 10, 10, 0.1, 0.1, 0.1);
+		taggingData = instance.readTaggingData(factorizer);
+		factorizer.setUserTagMatrix(taggingData.getUserTaggingCountMatrix());
+		factorizer.factorize();
+	}
 }
