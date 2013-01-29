@@ -183,7 +183,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 			PreferenceArray userPrefs = dataModel.getPreferencesFromUser(userID);
 			for (Preference pref : userPrefs) {
 				int i = itemIndex(pref.getItemID());
-				r.set(u, i, pref.getValue());
+				r.setQuick(u, i, pref.getValue());
 			}
 		}
 		//from now on, this class does not need dataModel anymore.
