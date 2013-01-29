@@ -1,7 +1,21 @@
 package com.eniyitavsiye.mahoutx.svdextension.online;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
+import java.io.File;
+import org.apache.commons.math.linear.ArrayRealVector;
+import org.apache.commons.math.linear.OpenMapRealVector;
+import org.apache.commons.math.linear.RealMatrix;
+import org.apache.commons.math.linear.RealVector;
+import org.apache.commons.math.linear.SparseRealVector;
+import org.apache.mahout.cf.taste.common.TasteException;
+import org.apache.mahout.cf.taste.example.grouplens.GroupLensDataModel;
+import org.apache.mahout.cf.taste.example.kddcup.track1.svd.ParallelArraysSGDFactorizer;
+import org.apache.mahout.cf.taste.impl.common.FastByIDMap;
+import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
+import org.apache.mahout.cf.taste.model.DataModel;
+import org.apache.mahout.cf.taste.model.Preference;
+import org.apache.mahout.cf.taste.model.PreferenceArray;
+import org.apache.mahout.common.distance.CosineDistanceMeasure;
 
 public class OnlineSVDRecommenderTest {
 
@@ -9,51 +23,76 @@ public class OnlineSVDRecommenderTest {
 	 * @param args
 	 */
 	public static void main(String[] args) throws Exception {
+		DataModel model = new GroupLensDataModel(new File("/home/ceyhun/Dropbox/Projects/doctoral/dataset/MovieLens/1m/ratings.dat"));
 
-		Logger log = Logger.getLogger(OnlineSVDRecommender.class.getName());
+		FactorizationCachingFactorizer cachingFactorizer = 
+						new FactorizationCachingFactorizer(
+						new ParallelArraysSGDFactorizer(model, 10, 20));
 
-//		GroupLensDataModel model = new GroupLensDataModel(new File("ratings.dat"));
+		OnlineSVDRecommender recommender = new OnlineSVDRecommender(model, cachingFactorizer, true);
+		Factorization fact = cachingFactorizer.getCachedFactorization();
 
-		//long userID = model.getUserIDs().next();
-		long userID = 8000; // new user!
-		
-		
-		log.log(Level.INFO, "First user is {0}", userID);
-		//log.info("Following items to be added: " + Arrays.toString(nonRatedItems));
-		
-		/*
-		float val = model.getPreferenceValue(userID, itemID);
-		log.info("value is " + val);
-		System.exit(0);
-		*/
-		
-//		Factorizer factorizer = new ALSWRFactorizer(model, 10, 0.02, 15);
-//		RandomUtils.useTestSeed();
-//		UserFactorUpdater userFactorUpdater = new StochasticGradientDescentUpdater(
-//				0.05, 0.02);
-//		
-//		OnlineSVDRecommender onlineSVDRecommender = new OnlineSVDRecommender(
-//				model, factorizer, userFactorUpdater);
-		// onlineSVDRecommender.refresh(new ArrayList<Refreshable>());
+		RealMatrix vk = recommender.vk;
+		RealMatrix vTransposeRightInverse = recommender.vTransposeRightInverse;
+		FastByIDMap<Integer> itemOrder = recommender.itemOrder;
 
-		//log.info("User " + userID + " rated " + model.getItemIDsFromUser(userID).size() + " items.\n");
+		double defaultRating = 0;
 		
-		//log.info("Before adding :" + onlineSVDRecommender.recommend(userID, 10));
+		for (long userID = 1; userID <= 10; ++userID) {
+			System.out.println("");
+			System.out.println("==================================================");
+			System.out.println("==================================================");
+			System.out.println("User " + userID);
 		
-		//Random r = new Random();
-//		for (long itemID = 8; itemID < 18; ++itemID) {
-//			float rat = 5;//r.nextInt(5)+1;
-//			onlineSVDRecommender.addPreference(userID, itemID, rat);
-//			log.info("After adding " + rat + " to " + itemID + ":" + onlineSVDRecommender.recommend(userID, 10) + '\n');
-//		}
-//		
-//		//add manually while debugging
-//		onlineSVDRecommender.refresh(new ArrayList<Refreshable>());
-//		log.info("After refreshing (offline) :" + onlineSVDRecommender.recommend(userID, 10) + '\n');
-		
-		
-		//[RecommendedItem[item:682, value:12.642227], RecommendedItem[item:2632, value:11.289652], RecommendedItem[item:1369, value:10.984646], RecommendedItem[item:167, value:10.554416], RecommendedItem[item:2557, value:10.230662], RecommendedItem[item:1519, value:9.688026], RecommendedItem[item:3905, value:9.599363], RecommendedItem[item:2192, value:9.453616], RecommendedItem[item:1796, value:9.429391], RecommendedItem[item:3085, value:9.414218]]
-		//
+			RealVector trainedUserFeatures = new ArrayRealVector(fact.getUserFeatures(userID));
+
+			RealVector availableUserRatings = availableUserRatings(userID, model, itemOrder, defaultRating);
+			RealVector artificialRatings = inferUserRatings(trainedUserFeatures, vk);
+
+			System.out.println("user rating count : " + model.getPreferencesFromUser(userID).length());
+			System.out.println("");
+			System.out.println("");
+			System.out.println("");
+
+			RealVector inferFeaturesFromArtificialRatings = vTransposeRightInverse.preMultiply(artificialRatings);
+			RealVector inferFeaturesFromAvailableRatings = vTransposeRightInverse.preMultiply(availableUserRatings);
+
+			System.out.println("trainedUserFeatures tf: \n" + trainedUserFeatures);
+			System.out.println("");
+			System.out.println("");
+
+			System.out.println("inferred features from artificial ratings af: \n" + inferFeaturesFromArtificialRatings);
+			System.out.println("");
+			System.out.println("");
+
+			System.out.println("inferred features from available ratings rf: \n" + inferFeaturesFromAvailableRatings);
+			System.out.println("");
+			System.out.println("");
+
+			System.out.println("dist between tf af : " + distStat(trainedUserFeatures, inferFeaturesFromArtificialRatings));
+			System.out.println("dist between tf rf : " + distStat(trainedUserFeatures, inferFeaturesFromAvailableRatings));
+			System.out.println("dist between af rf : " + distStat(inferFeaturesFromArtificialRatings, inferFeaturesFromAvailableRatings));
+		}
+	}
+
+	private static RealVector availableUserRatings(long userId, DataModel model, 
+					FastByIDMap<Integer> itemOrder, double defaultVal) 
+					throws TasteException	{
+		PreferenceArray preferences = model.getPreferencesFromUser(userId);
+		SparseRealVector r = new OpenMapRealVector(model.getNumItems(), preferences.length());
+		r.set(defaultVal);
+		for (Preference p : preferences) {
+			r.setEntry(itemOrder.get(p.getItemID()), p.getValue());
+		}
+		return r;
+	}
+
+	private static RealVector inferUserRatings(RealVector uk_u, RealMatrix vk) {
+		return vk.transpose().preMultiply(uk_u);
+	}
+
+	private static String distStat(RealVector v1, RealVector v2) {
+		return "cos: " + CosineDistanceMeasure.distance(v1.getData(), v2.getData()) + ", euc:" + v1.getDistance(v2);
 	}
 
 }
