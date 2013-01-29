@@ -54,8 +54,9 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 
 	private final boolean seanMethod;
 
-	private RealMatrix vTransposeRightInverse;
-	private FastByIDMap<Integer> itemOrder;
+	public RealMatrix vTransposeRightInverse;
+	public FastByIDMap<Integer> itemOrder;
+	public RealMatrix vk;
 
 	private int numItems;
 
@@ -363,7 +364,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 			itemOrder.put(id, ind);
 			ind++;
 		}
-		this.vTransposeRightInverse = new Array2DRowRealMatrix(array);
+		this.vTransposeRightInverse = vk = new Array2DRowRealMatrix(array);
 		RealMatrix inv = null;
 		try {
 			inv = new LUDecompositionImpl(vTransposeRightInverse.transpose().multiply(vTransposeRightInverse)).getSolver().getInverse();
