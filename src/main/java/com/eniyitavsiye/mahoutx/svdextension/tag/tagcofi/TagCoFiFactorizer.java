@@ -22,6 +22,7 @@ import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.DiagonalMatrix;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.MatrixSlice;
+import org.apache.mahout.math.SparseColumnMatrix;
 import org.apache.mahout.math.SparseMatrix;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.Vector.Element;
@@ -197,28 +198,27 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		//document: Tags
 		//terms   : user
 		//tf(i,k) = userTagMatrix(i, k) / max(userTagMatrix(*, k))
-		//idf(i) = log(T/sum(userTagMatrix(i, *) != 0))
+		//idf(k) = log(T/sum(userTagMatrix(*, k) != 0))
 		Vector idfs = userTagMatrix
-						.aggregateRows(new CountNonZeroFunction())
-						.assign(new DivideConstantInverseLogFunction(T));
-		Vector colMaxes = userTagMatrix.aggregateColumns(new MaxFunction());
-		Matrix z = new SparseMatrix(N, T);
+						.aggregateColumns(new CountNonZeroFunction())
+						.assign(new DivideConstantInverseLogFunction(N));
 
-		Iterator<MatrixSlice> matrixIterator = userTagMatrix.iterator();
-		while (matrixIterator.hasNext()) {
-			MatrixSlice slice = matrixIterator.next();
+		Vector colMaxes = userTagMatrix
+						.aggregateColumns(new MaxFunction());
 
-			int i = slice.index();
+		Matrix z = new SparseColumnMatrix(N, T);
 
-			Iterator<Element> rowIterator = slice.vector().iterateNonZero();
-			while (rowIterator.hasNext()) {
-				Element elem = rowIterator.next();
+		for (int j = 0; j < z.numCols(); ++j) {
+			Iterator<Element> colIterator = z.viewColumn(j).iterateNonZero();
 
-				int j = elem.index();
+			while (colIterator.hasNext()) {
+				Element elem = colIterator.next();
+
+				int i = elem.index();
 
 				double tf = elem.get() / colMaxes.get(j);
 				double idf = idfs.get(j);
-				double tf_idf = tf * Math.log(N/idf)/Math.log(2);
+				double tf_idf = tf * idf;
 
 				if (isValidValue(tf_idf)) { //prevent NaN;
 					z.set(i, j, tf_idf);
