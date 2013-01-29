@@ -296,15 +296,16 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 
 	private static class DivideConstantInverseLogFunction implements DoubleFunction {
 
-		private double logConstant;
+		private final double logConstant;
+		private static final double log2 = Math.log(2);
 
 		private DivideConstantInverseLogFunction(double constant) {
-			logConstant = Math.log(constant);
+			logConstant = Math.log(constant) / log2;
 		}
 
 		@Override
 		public double apply(double arg) {
-			return logConstant - Math.log(arg);
+			return logConstant - Math.log(arg) / log2;
 		}
 
 	}
