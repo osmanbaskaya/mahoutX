@@ -17,6 +17,7 @@ import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.model.Preference;
 import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.apache.mahout.common.RandomUtils;
+import org.apache.mahout.common.distance.CosineDistanceMeasure;
 import org.apache.mahout.math.DenseMatrix;
 import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.DiagonalMatrix;
@@ -335,32 +336,22 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 			public Matrix calculateSimilarityFrom(Matrix z, Matrix userTagMatrix) {
 				int N = z.columnSize();
 				Matrix s = new SparseMatrix(N, N);
+				CosineDistanceMeasure dist = new CosineDistanceMeasure();
 
-				for (MatrixSlice slice : s) {
-					int i = slice.index();
-					Iterator<Element> rowIterator = slice.vector().iterateNonZero();
-
-					while(rowIterator.hasNext()) {
-						int j = rowIterator.next().index();
-						double oldVal = s.getQuick(i, j);
-						if (i <= j || isValidValue(oldVal)) {
-							continue;
-						}
-						Iterator<Element> commonTags = this.commonTagIterator(userTagMatrix, i, j);
-						double dot = 0;
-						double norm1 = 0;
-						double norm2 = 0;
-						while (commonTags.hasNext()) {
-							int k = commonTags.next().index();
-							double zik = z.get(i, k);
-							double zjk = z.get(j, k);
-							dot += zik * zjk;
-							norm1 += zik * zik;
-							norm2 += zjk * zjk;
-						}
-						double sim = dot / Math.sqrt(norm1 * norm2);
-						if (isValidValue(sim)) {
-							s.setQuick(i, j, sim);
+				//iterate over rows
+				for (MatrixSlice sliceI : z) {
+					int i = sliceI.index();
+					s.setQuick(i, i, 1);
+					//iterate over rows
+					for (MatrixSlice sliceJ : z) {
+						int j = sliceJ.index();
+						// if they are in upper triangle
+						if (i > j) {
+							double sim = dist.distance(sliceI.vector(), sliceJ.vector());
+							if (isValidValue(sim)) {
+								s.setQuick(i, j, sim);
+								s.setQuick(j, i, sim);
+							}
 						}
 					}
 				}
