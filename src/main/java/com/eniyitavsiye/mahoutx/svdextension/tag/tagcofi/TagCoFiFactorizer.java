@@ -91,7 +91,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 
 	public void setUserTagMatrix(Matrix userTagMatrix) {
 		this.userTagMatrix = userTagMatrix;
-		this.T = userTagMatrix.rowSize();
+		this.T = userTagMatrix.numCols();
 	}
 
 	@Override
