@@ -217,8 +217,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 						.aggregateColumns(new CountNonZeroFunction())
 						.assign(new DivideConstantInverseLogFunction(N));
 
-		Vector colMaxes = userTagMatrix
-						.aggregateColumns(new MaxFunction());
+		Vector colMaxes = userTagMatrix .aggregateColumns(new MaxFunction());
 
 		Matrix z = new SparseColumnMatrix(N, T);
 
@@ -299,6 +298,13 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		return vec;
 	}
 
+	private static class SumFunction implements VectorFunction {
+		@Override
+		public double apply(Vector f) {
+			return f.zSum();
+		}
+	}
+
 	private static class NonZeroToOneFunction implements DoubleFunction {
 
 		@Override
@@ -347,24 +353,21 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		COSINE {
 			@Override
 			public Matrix calculateSimilarityFrom(Matrix z, Matrix userTagMatrix) {
-				int N = z.columnSize();
+				int N = z.numRows();
 				Matrix s = new SparseMatrix(N, N);
 				CosineDistanceMeasure dist = new CosineDistanceMeasure();
 
 				//iterate over rows
-				for (MatrixSlice sliceI : z) {
-					int i = sliceI.index();
+				for (int i = 0; i < N; ++i) {
 					s.setQuick(i, i, 1);
 					//iterate over rows
-					for (MatrixSlice sliceJ : z) {
-						int j = sliceJ.index();
+					Vector rowI = z.viewRow(i);
+					for (int j = i + 1; j < N; ++ j) {
 						// if they are in upper triangle
-						if (i > j) {
-							double sim = dist.distance(sliceI.vector(), sliceJ.vector());
-							if (isValidValue(sim)) {
-								s.setQuick(i, j, sim);
-								s.setQuick(j, i, sim);
-							}
+						double sim = dist.distance(rowI, z.viewRow(j));
+						if (isValidValue(sim)) {
+							s.setQuick(i, j, sim);
+							s.setQuick(j, i, sim);
 						}
 					}
 				}
