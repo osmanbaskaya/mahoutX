@@ -2,6 +2,7 @@ package com.eniyitavsiye.mahoutx.svdextension.online;
 
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import java.io.File;
+import java.util.Arrays;
 import org.apache.commons.math.linear.ArrayRealVector;
 import org.apache.commons.math.linear.OpenMapRealVector;
 import org.apache.commons.math.linear.RealMatrix;
@@ -34,6 +35,7 @@ public class OnlineSVDRecommenderTest {
 
 		RealMatrix vk = recommender.vk;
 		RealMatrix vTransposeRightInverse = recommender.vTransposeRightInverse;
+		System.out.println("Vk Transpose Right inverse first 100 row of first column " + Arrays.toString(vTransposeRightInverse.getColumnVector(0).getSubVector(0, 100).getData()));
 		FastByIDMap<Integer> itemOrder = recommender.itemOrder;
 
 		double defaultRating = 0;
