@@ -76,7 +76,13 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 
 	private DataModel dataModel;
 
+	/**
+	 * Number of users.
+	 */
 	private final int N;
+	/**
+	 * Number of items.
+	 */
 	private final int M;
 	private int T;
 
@@ -107,29 +113,32 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 			log.log(Level.SEVERE, e.getMessage(), e);
 			throw e;
 		}
-		log.log(Level.INFO, "Factorization begins... delta:{0}, alpha:{1}, beta:{2}, W:{3}, D:{4}", 
+		log.log(Level.INFO, "Factorization begins... "
+						+ "delta:{0}, alpha:{1}, beta:{2}, W:{3}, D:{4}", 
 						new Object[] {delta, alpha, beta, W, D});
 		Matrix R = extractRatingsKillDataModel();
 		Matrix Z = computeTF_IDF(); //from tags
-		Matrix S = similarityCalculator.calculateSimilarityFrom(Z, userTagMatrix);
+		Matrix S = new SparseMatrix(N, N);//similarityCalculator.calculateSimilarityFrom(Z, userTagMatrix);
 		log.log(Level.INFO, "Similarity calculation completed. {0}", similarityCalculator);
 
 		//D = diagonal matrix with column sums of S.
 		//L = D - S (Laplacian)
-		Matrix L = new DiagonalMatrix(S.aggregateColumns(new VectorFunction() {
-			@Override
-			public double apply(Vector f) {
-				return f.zSum();
-			}
-		})).minus(S);
-
+		// since S is not needed anymore it is turned into L.
+		Matrix L = S.clone(); // -L is calculated, will be inverted at betaL calculation!
+		for (int i = 0; i < N; ++i) {
+			// since S is symmetric, column sum should be equal to row sum.
+			L.setQuick(i, i, L.getQuick(i, i) - S.viewRow(i).zSum()); 
+		}
 		log.log(Level.INFO, "Laplacian calculated.");
+
 		Matrix U = initRandom(D, N, 0.1);
 		Matrix V = initRandom(D, M, 0.1);
+		log.log(Level.INFO, "U and V matrices initialized.");
 
-		DiagonalMatrix alphaI = new DiagonalMatrix(alpha, M);
-		Matrix betaL = L.times(beta);
-		log.log(Level.INFO, "U and V matrices initialized, alphaI and betaL precalculated.");
+		DiagonalMatrix alphaI = new DiagonalMatrix(alpha, N);
+		log.log(Level.INFO, "alphaI initialized.");
+		Matrix betaL = L.times(-beta);
+		log.log(Level.INFO, "betaL precalculated.");
 
 		//for each iteration
 		for (int w = 1; w <= W; ++w) {
@@ -145,7 +154,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 			//for each item
 			for (int j = 1; j <= M; ++j) {
 				Vector Vj = V.viewRow(j);
-				Vector grad_f_Vj = (alphaI.plus(sumOuterUserFactorProducts(R, U, j))).times(Vj).minus(sumUserFactorWithJthItemRatings(R, U, j));
+				Vector grad_f_Vj = alphaI.plus(sumOuterUserFactorProducts(R, U, j)).times(Vj).minus(sumUserFactorWithJthItemRatings(R, U, j));
 				Vj.assign(Vj.minus(grad_f_Vj.times(delta)));
 			}
 			log.log(Level.INFO, "Iteration {0} completed.", w);
