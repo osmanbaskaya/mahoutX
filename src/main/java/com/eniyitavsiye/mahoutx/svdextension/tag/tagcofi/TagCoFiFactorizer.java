@@ -491,11 +491,14 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		TaggingData taggingData;
 		TagCoFiFactorizer factorizer;
 		File root = new java.io.File("/home/ceyhun/Dropbox/Projects/doctoral/dataset/MovieLens/10M100K");
-		model = new FileDataModel(new File(root, "ratings.csv"));
+		model = new FileDataModel(new File(root, "ratings_small_shuff2.csv"));
 		TaggingDataIO_ML instance = new TaggingDataIO_ML(new File(root, "tags.dat"));
 		factorizer = new TagCoFiFactorizer(model, 
 						TagCoFiFactorizer.SimilarityCalculator.COSINE, 10, 10, 0.1, 0.1, 0.1);
 		taggingData = instance.readTaggingData(factorizer);
+		System.out.println("Tag count : " + taggingData.getTags().getTagCount());
+		System.out.println("Item count : " + taggingData.getItemTaggingCountMatrix().numRows());
+		System.out.println("User count : " + taggingData.getUserTaggingCountMatrix().numRows());
 		factorizer.setUserTagMatrix(taggingData.getUserTaggingCountMatrix());
 		factorizer.factorize();
 	}
