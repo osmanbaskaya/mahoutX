@@ -51,11 +51,11 @@ public class TaggingData {
 		return (int) userTags.get(indexMap.userIndex(userID), tags.getTagIndex(tag));
 	}
 
-	public int getItemNumTaggedTotal(long itemID, String tag) {
+	public int getItemNumTaggedTotal(long itemID) {
 		return (int) itemTags.viewRow(indexMap.itemIndex(itemID)).zSum();
 	}
 
-	public int getUserNumTaggedTotal(long userID, String tag) {
+	public int getUserNumTaggedTotal(long userID) {
 		return (int) userTags.viewRow(indexMap.userIndex(userID)).zSum();
 	}
 
