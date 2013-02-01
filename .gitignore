@@ -9,3 +9,10 @@
 # Backup Files
 *~
 *.swp
+
+# Netbeans related files
+nb*.xml
+
+#IntelliJ IDEA related files
+.idea/
+*.iml
