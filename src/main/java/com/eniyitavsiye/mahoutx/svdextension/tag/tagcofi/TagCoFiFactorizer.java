@@ -144,7 +144,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		for (int w = 1; w <= W; ++w) {
 
 			//for each factor
-			for (int d = 1; d <= D; ++d) {
+			for (int d = 0; d < D; ++d) {
 				Matrix W_mat = new DiagonalMatrix(computeVdjSquareSums(R, V, d));
 				Vector x = computeXVector(R, U, V, d);
 				Vector Ud = U.viewRow(d);
@@ -152,7 +152,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 				Ud.assign(Ud.minus(grad_f_Ud.times(delta)));
 			}
 			//for each item
-			for (int j = 1; j <= M; ++j) {
+			for (int j = 0; j < M; ++j) {
 				Vector Vj = V.viewRow(j);
 				Vector grad_f_Vj = alphaI.plus(sumOuterUserFactorProducts(R, U, j)).times(Vj).minus(sumUserFactorWithJthItemRatings(R, U, j));
 				Vj.assign(Vj.minus(grad_f_Vj.times(delta)));
