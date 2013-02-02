@@ -7,11 +7,6 @@ package com.eniyitavsiye.mahoutx.svdextension.tag.tagcofi;
 import com.eniyitavsiye.mahoutx.common.UserItemIDIndexMapFunction;
 import com.eniyitavsiye.mahoutx.tags.TaggingData;
 import com.eniyitavsiye.mahoutx.tags.TaggingDataIO_ML;
-import java.io.File;
-import java.util.Iterator;
-import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.impl.model.file.FileDataModel;
@@ -34,6 +29,12 @@ import org.apache.mahout.math.Vector.Element;
 import org.apache.mahout.math.function.DoubleFunction;
 import org.apache.mahout.math.function.PlusMult;
 import org.apache.mahout.math.function.VectorFunction;
+
+import java.io.File;
+import java.util.Iterator;
+import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -276,7 +277,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 	private Matrix sumOuterUserFactorProducts(Matrix R, Matrix U, int j) {
 		Matrix result = new DenseMatrix(N, N);
 		Iterator<Element> nonZeroRatingsOfI = R.viewColumn(j).iterateNonZero();
-		
+
 		while (nonZeroRatingsOfI.hasNext()) {
 			Element elem = nonZeroRatingsOfI.next();
 			int i = elem.index();
@@ -491,8 +492,8 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 		TaggingData taggingData;
 		TagCoFiFactorizer factorizer;
 		File root = new java.io.File("/home/ceyhun/Dropbox/Projects/doctoral/dataset/MovieLens/10M100K");
-		model = new FileDataModel(new File(root, "ratings_small_shuff2.csv"));
-		TaggingDataIO_ML instance = new TaggingDataIO_ML(new File(root, "tags.dat"));
+		model = new FileDataModel(new File(root, "ratings_small.csv"));
+		TaggingDataIO_ML instance = new TaggingDataIO_ML(new File(root, "tags_small.dat"));
 		factorizer = new TagCoFiFactorizer(model, 
 						TagCoFiFactorizer.SimilarityCalculator.COSINE, 10, 10, 0.1, 0.1, 0.1);
 		taggingData = instance.readTaggingData(factorizer);
