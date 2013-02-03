@@ -17,14 +17,7 @@ import org.apache.mahout.cf.taste.model.Preference;
 import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.common.distance.CosineDistanceMeasure;
-import org.apache.mahout.math.DenseMatrix;
-import org.apache.mahout.math.DenseVector;
-import org.apache.mahout.math.DiagonalMatrix;
-import org.apache.mahout.math.Matrix;
-import org.apache.mahout.math.MatrixSlice;
-import org.apache.mahout.math.SparseColumnMatrix;
-import org.apache.mahout.math.SparseMatrix;
-import org.apache.mahout.math.Vector;
+import org.apache.mahout.math.*;
 import org.apache.mahout.math.Vector.Element;
 import org.apache.mahout.math.function.DoubleFunction;
 import org.apache.mahout.math.function.PlusMult;
@@ -277,6 +270,7 @@ public class TagCoFiFactorizer extends AbstractFactorizer implements UserItemIDI
 	private Matrix sumOuterUserFactorProducts(Matrix R, Matrix U, int j) {
 		Matrix result = new DenseMatrix(N, N);
 		Iterator<Element> nonZeroRatingsOfI = R.viewColumn(j).iterateNonZero();
+        AbstractVector
 
 		while (nonZeroRatingsOfI.hasNext()) {
 			Element elem = nonZeroRatingsOfI.next();

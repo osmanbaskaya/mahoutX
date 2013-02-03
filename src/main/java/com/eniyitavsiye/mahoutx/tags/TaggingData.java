@@ -5,13 +5,13 @@
 package com.eniyitavsiye.mahoutx.tags;
 
 import com.eniyitavsiye.mahoutx.common.UserItemIDIndexMapFunction;
+import org.apache.commons.math3.linear.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.apache.mahout.math.Matrix;
-import org.apache.mahout.math.RandomAccessSparseVector;
-import org.apache.mahout.math.SparseColumnMatrix;
+
 
 /**
  *
@@ -20,11 +20,11 @@ import org.apache.mahout.math.SparseColumnMatrix;
 public class TaggingData {
 
 	private Tags tags;
-	private Matrix userTags;
-	private Matrix itemTags;
+	private RealMatrix userTags;
+	private RealMatrix itemTags;
 	private UserItemIDIndexMapFunction indexMap;
 
-	public TaggingData(Tags tags, Matrix userTags, Matrix itemTags, UserItemIDIndexMapFunction indexMap) {
+	public TaggingData(Tags tags, RealMatrix userTags, RealMatrix itemTags, UserItemIDIndexMapFunction indexMap) {
 		this.tags = tags;
 		this.userTags = userTags;
 		this.itemTags = itemTags;
@@ -35,52 +35,44 @@ public class TaggingData {
 		return tags;
 	}
 
-	public Matrix getUserTaggingCountMatrix() {
+	public RealMatrix getUserTaggingCountMatrix() {
 		return userTags;
 	}
 
-	public Matrix getItemTaggingCountMatrix() {
+	public RealMatrix getItemTaggingCountMatrix() {
 		return itemTags;
 	}
 
 	public int getItemNumTagged(long itemID, String tag) {
-		return (int) itemTags.get(indexMap.itemIndex(itemID), tags.getTagIndex(tag));
+		return (int) itemTags.getEntry(indexMap.itemIndex(itemID), tags.getTagIndex(tag));
 	}
 
 	public int getUserNumTagged(long userID, String tag) {
-		return (int) userTags.get(indexMap.userIndex(userID), tags.getTagIndex(tag));
+		return (int) userTags.getEntry(indexMap.userIndex(userID), tags.getTagIndex(tag));
 	}
 
 	public int getItemNumTaggedTotal(long itemID) {
-		return (int) itemTags.viewRow(indexMap.itemIndex(itemID)).zSum();
+		return (int) itemTags.getRowVector(indexMap.itemIndex(itemID)).dotProduct(new ArrayRealVector(itemTags.getRowDimension(), 1));
 	}
 
 	public int getUserNumTaggedTotal(long userID) {
-		return (int) userTags.viewRow(indexMap.userIndex(userID)).zSum();
+        return (int) userTags.getRowVector(indexMap.userIndex(userID)).dotProduct(new ArrayRealVector(userTags.getRowDimension(), 1));
 	}
 
 	public int getTagUsedTotal(String tag) {
-		return (int) userTags.viewColumn(tags.getTagIndex(tag)).zSum();
-	}
-
-	public int getUserTotalTagged(long userID) {
-		return (int) userTags.viewRow(indexMap.userIndex(userID)).zSum();
-	}
-
-	public int getItemTotalTagged(long itemID) {
-		return (int) itemTags.viewRow(indexMap.itemIndex(itemID)).zSum();
+        return (int) userTags.getColumnVector(tags.getTagIndex(tag)).dotProduct(new ArrayRealVector(userTags.getColumnDimension(), 1));
 	}
 
 	protected int getTagUsedTotalByItems(String tag) {
-		return (int) itemTags.viewColumn(tags.getTagIndex(tag)).zSum();
+        return (int) itemTags.getColumnVector(tags.getTagIndex(tag)).dotProduct(new ArrayRealVector(itemTags.getColumnDimension(), 1));
 	}
 
 	public static class Builder {
 
 		private Tags.Builder tagBuilder = new Tags.Builder();
 		private UserItemIDIndexMapFunction indexMap;
-		private List<RandomAccessSparseVector> userTagging;
-		private List<RandomAccessSparseVector> itemTagging;
+		private List<RealVector> userTagging;
+		private List<RealVector> itemTagging;
 		
 		public Builder(UserItemIDIndexMapFunction indexMap) {
 			this.indexMap = indexMap;
@@ -106,20 +98,25 @@ public class TaggingData {
 
 		public TaggingData done() {
 			//TODO maybe prune tags with zero tagging count.
-			List<RandomAccessSparseVector> it = this.itemTagging;
-			List<RandomAccessSparseVector> ut = this.userTagging;
+			List<RealVector> it = this.itemTagging;
+			List<RealVector> ut = this.userTagging;
 			userTagging = null;
 			itemTagging = null;
 			Tags tags = tagBuilder.done();
 
 			int T = tags.getTagCount();
-			Matrix userMat = new SparseColumnMatrix(
-							indexMap.getUserCount(), T,
-							ut.toArray(new RandomAccessSparseVector[T]));
+			RealMatrix userMat = new OpenMapRealMatrix(
+							indexMap.getUserCount(), T);
+            for (int i = 0; i < ut.size(); ++i) {
+                userMat.setColumnVector(i, ut.get(i));
+            }
 
-			Matrix itemMat = new SparseColumnMatrix(
-							indexMap.getItemCount(), T, 
-							it.toArray(new RandomAccessSparseVector[T]));
+
+			RealMatrix itemMat = new OpenMapRealMatrix(
+							indexMap.getItemCount(), T);
+            for (int i = 0; i < it.size(); ++i) {
+                itemMat.setColumnVector(i, it.get(i));
+            }
 			return new TaggingData(tags, userMat, itemMat, indexMap);
 		}
 
@@ -134,12 +131,12 @@ public class TaggingData {
 		 * @param c
 		 * @return 
 		 */
-		private boolean incMat(List<RandomAccessSparseVector> tagging, int i, int j, int c) {
-			RandomAccessSparseVector col;
+		private boolean incMat(List<RealVector> tagging, int i, int j, int c) {
+			RealVector col;
 
 			if (j >= tagging.size()) { // if a new tag has come
 				//create a sparse vector 
-				col = new RandomAccessSparseVector(c);
+				col = new OpenMapRealVector(c);
 				//add that column as jth index
 				tagging.add(col);
 
@@ -154,7 +151,7 @@ public class TaggingData {
 				return false;
 			} else {
 				//increment ith user's/item's usage by 1
-				col.set(i, col.get(i) + 1);
+				col.setEntry(i, col.getEntry(i) + 1);
 				return true;
 			}
 		}
