@@ -6,13 +6,13 @@ package com.eniyitavsiye.mahoutx.db;
 
 
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -84,13 +84,15 @@ public class DBUtil {
         MysqlDataSource datasource = getDataSource();
         Connection con = datasource.getConnection();
          
-        String sql = "select t0.item_id from (SELECT item_id FROM "+context+
-                    "_tag WHERE tag='"+tags[0] +"')t0 ";
+        StringBuilder sql = new StringBuilder()
+                .append("select t0.item_id from (SELECT item_id FROM ")
+                .append(context).append("_tag WHERE tag='").append(tags[0]).append("')t0 ");
         for (int i=1;i<tags.length;i++) {
-            sql+= " inner join " +"(SELECT item_id FROM "+context+
-                    "_tag WHERE tag='"+tags[i] +"')t"+i+ " on (t"+(i-1)+".item_id=t"+i+".item_id) " ;
+            sql.append(" inner join ").append("(SELECT item_id FROM ").append(context).append("_tag WHERE tag='")
+                    .append(tags[i]).append("')t").append(i).append(" on (t").append(i - 1).append(".item_id=t")
+                    .append(i).append(".item_id) ").toString();
         } 
-        PreparedStatement prest = con.prepareStatement(sql);
+        PreparedStatement prest = con.prepareStatement(sql.toString());
         ResultSet rs = prest.executeQuery();
         ArrayList<Long> items=new ArrayList<>();
         while (rs.next()) {
