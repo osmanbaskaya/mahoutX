@@ -6,16 +6,6 @@ import com.eniyitavsiye.mahoutx.common.ReplaceableDataModel;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import com.eniyitavsiye.mahoutx.svdextension.online.OnlineSVDRecommender;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.jws.WebMethod;
-import javax.jws.WebParam;
-import javax.jws.WebService;
 import org.apache.mahout.cf.taste.common.NoSuchItemException;
 import org.apache.mahout.cf.taste.common.NoSuchUserException;
 import org.apache.mahout.cf.taste.common.TasteException;
@@ -24,23 +14,37 @@ import org.apache.mahout.cf.taste.example.kddcup.track1.svd.ParallelArraysSGDFac
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ConnectionPoolDataSource;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
+import org.apache.mahout.cf.taste.impl.recommender.svd.ALSWRFactorizer;
+import org.apache.mahout.cf.taste.impl.recommender.svd.ExpectationMaximizationSVDFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
+import org.apache.mahout.cf.taste.impl.recommender.svd.Factorizer;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.common.distance.CosineDistanceMeasure;
+
+import javax.jws.WebMethod;
+import javax.jws.WebParam;
+import javax.jws.WebService;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @WebService(serviceName = "RecommenderWS")
 public class RecommenderWS {
 
     private static HashMap<String, Recommender> predictor;
     private static HashMap<String, FactorizationCachingFactorizer> factorizationCaches;
-    private static HashMap<String, Boolean> ongoingTrainingStates;
+    private static HashMap<String, ReplaceableDataModel> dataModels;
+    private static HashMap<String, ContextState> contextStates;
     private static final Logger log = Logger.getLogger(RecommenderWS.class.getName());
 
     static {
         predictor = new HashMap<>();
         factorizationCaches = new HashMap<>();
-        ongoingTrainingStates = new HashMap<>();
     }
 
     @WebMethod(operationName = "isModelAlive")
@@ -48,34 +52,70 @@ public class RecommenderWS {
         return predictor.containsKey(context);
     }
 
-    @WebMethod(operationName = "buildModel")
-    public String buildModel(@WebParam(name = "context") String context) {
+    @WebMethod(operationName = "fetchData")
+    public String fetchData(@WebParam(name = "context") String context) {
         try {
-            ongoingTrainingStates.put(context, Boolean.TRUE);
+            contextStates.put(context, ContextState.FETCHING);
+            DBUtil dbUtil = new DBUtil();
+            LimitMySQLJDBCDataModel model = new LimitMySQLJDBCDataModel(new ConnectionPoolDataSource(dbUtil.getDataSource()), context + "_rating", "user_id", "item_id", "rating", null);
+            ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(model);
+            ReplaceableDataModel replaceableModel = new ReplaceableDataModel(reloadModel);
+            dataModels.put(context, replaceableModel);
+            contextStates.put(context, ContextState.FETCHED);
+        } catch (Exception ex) {
+            log.log(Level.SEVERE, null, ex);
+            contextStates.put(context, ContextState.INITIAL);
+            return "error";
+        }
+        return "done";
+    }
+
+    @WebMethod(operationName = "buildModel")
+    public String buildModel(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "factorizerName") String factorizerName,
+            @WebParam(name = "nFactors") int nFactors,
+            @WebParam(name = "nIterations") int nIterations
+            ) {
+        ContextState currentState = contextStates.get(context);
+        if (!(currentState == ContextState.FETCHED
+                || currentState == ContextState.READY)) {
+            return "Illegal context state! " + currentState;
+        }
+        contextStates.put(context, ContextState.BUILDING);
+        try {
             log.log(Level.INFO, "buildItemSimilarityMatrix starts.");
 
-            DBUtil dbUtil = new DBUtil();
-            LimitMySQLJDBCDataModel mySqlModel = new LimitMySQLJDBCDataModel(new ConnectionPoolDataSource(dbUtil.getDataSource()), context + "_rating", "user_id", "item_id", "rating", null);
-            ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(mySqlModel);
-						ReplaceableDataModel replaceableModel = new ReplaceableDataModel(reloadModel);
+            ReplaceableDataModel model = dataModels.get(context);
 
-            FactorizationCachingFactorizer cachingFactorizer = 
-										new FactorizationCachingFactorizer(
-										new ParallelArraysSGDFactorizer(replaceableModel, 2, 2));
+            Factorizer factorizer;
+            switch (factorizerName) {
+                case "ExpectationMaximizationSVDFactorizer":
+                    factorizer = new ExpectationMaximizationSVDFactorizer(model, nFactors, nIterations);
+                    break;
+                case "ALSWRFactorizer":
+                    factorizer = new ALSWRFactorizer(model, nFactors, 0.005, nIterations);
+                    break;
+                default:
+                    factorizer = new ParallelArraysSGDFactorizer(model, nFactors, nIterations);
+                    break;
+            }
+            FactorizationCachingFactorizer cachingFactorizer =
+										new FactorizationCachingFactorizer(factorizer);
 
-            Recommender recommender = new OnlineSVDRecommender(replaceableModel, cachingFactorizer);
-						replaceableModel.setDelegate(mySqlModel);
+            Recommender recommender = new OnlineSVDRecommender(model, cachingFactorizer);
             log.log(Level.INFO, "Data loading and training done.");
 
             predictor.put(context, recommender);
             factorizationCaches.put(context, cachingFactorizer);
+            contextStates.put(context, ContextState.READY);
 
             return "done";
         } catch (TasteException ex) {
+            // return to old state, whatever it is.
+            contextStates.put(context, currentState);
             log.log(Level.SEVERE, null, ex);
             return "error";
-        } finally {
-            ongoingTrainingStates.put(context, Boolean.FALSE);
         }
     }
 
@@ -133,14 +173,32 @@ public class RecommenderWS {
         }
     }
 
+    @WebMethod(operationName = "estimatePreferences")
+    public double[] estimatePreferences(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "userId") long userId,
+            @WebParam(name = "itemIds") long[] itemIds) throws Exception {
+        try {
+            double[] preferences = new double[itemIds.length];
+            for (int i = 0, itemIdsLength = itemIds.length; i < itemIdsLength; i++) {
+                long itemId = itemIds[i];
+                preferences[i] = predictor.get(context).estimatePreference(userId, itemId);
+            }
+            return preferences;
+        } catch (Exception ex) {
+            log.log(Level.SEVERE, null, ex);
+            throw ex;
+        }
+    }
+
     @WebMethod(operationName = "addPreference")
     public void addPreference(
             @WebParam(name = "context") String context,
             @WebParam(name = "userId") long userId,
             @WebParam(name = "itemId") long itemId,
-						@WebParam(name = "rating") byte rating) throws Exception {
+			@WebParam(name = "rating") byte rating) throws Exception {
 			try {
-				OnlineSVDRecommender osr = (OnlineSVDRecommender) predictor.get(context);
+                OnlineSVDRecommender osr = (OnlineSVDRecommender) predictor.get(context);
 				osr.addPreference(userId, itemId, rating);
 			} catch (ClassCastException e) {
 				throw new RuntimeException("Recommender for context " + context + 
