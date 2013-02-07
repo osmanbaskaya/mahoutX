@@ -115,7 +115,7 @@ public class RecommenderWS {
             contextStates.put(context, ContextState.READY);
 
             return "done";
-        } catch (TasteException ex) {
+        } catch (Exception ex) {
             // return to old state, whatever it is.
             contextStates.put(context, currentState);
             log.log(Level.SEVERE, null, ex);
@@ -158,7 +158,7 @@ public class RecommenderWS {
                 list[i - offset] = recommendedItem.getItemID() + ";" + recommendedItem.getValue();
             }
             return list;
-        } catch (TasteException ex) {
+        } catch (Exception ex) {
             log.log(Level.SEVERE, null, ex);
 						throw new RuntimeException(ex);
         }
@@ -310,7 +310,7 @@ public class RecommenderWS {
             @WebParam(name = "userId") final long userId) {
 			try {
 				return predictor.get(context).getDataModel().getPreferencesFromUser(userId).length() != 0;
-			} catch (TasteException ex) {
+			} catch (Exception ex) {
 				Logger.getLogger(RecommenderWS.class.getName()).log(Level.SEVERE, null, ex);
 				return false;
 			}
