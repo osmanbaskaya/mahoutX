@@ -91,6 +91,7 @@ public class RecommenderWS {
 
             ReplaceableDataModel model = dataModels.get(context);
 
+            factorizerName = factorizerName == null ? "" : factorizerName;
             Factorizer factorizer;
             switch (factorizerName) {
                 case "ExpectationMaximizationSVDFactorizer":
