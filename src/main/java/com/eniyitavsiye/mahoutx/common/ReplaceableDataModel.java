@@ -4,13 +4,14 @@
  */
 package com.eniyitavsiye.mahoutx.common;
 
-import java.util.Collection;
 import org.apache.mahout.cf.taste.common.Refreshable;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.model.PreferenceArray;
+
+import java.util.Collection;
 
 /**
  *
@@ -23,6 +24,10 @@ public class ReplaceableDataModel implements DataModel {
 	public void setDelegate(DataModel delegate) {
 		this.delegate = delegate;
 	}
+
+    public DataModel getDelegate() {
+        return delegate;
+    }
 
 	public ReplaceableDataModel(DataModel delegate) {
 		this.delegate = delegate;
@@ -112,5 +117,5 @@ public class ReplaceableDataModel implements DataModel {
 	public void refresh(Collection<Refreshable> alreadyRefreshed) {
 		delegate.refresh(alreadyRefreshed);
 	}
-	
+
 }

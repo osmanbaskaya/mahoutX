@@ -1,18 +1,14 @@
 package com.eniyitavsiye.mahoutx.svdextension.online;
 
+import com.eniyitavsiye.mahoutx.common.ReplaceableDataModel;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.apache.mahout.cf.taste.common.NoSuchItemException;
 import org.apache.mahout.cf.taste.common.NoSuchUserException;
 import org.apache.mahout.cf.taste.common.Refreshable;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.FastByIDMap;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
-import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
+import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
 import org.apache.mahout.cf.taste.impl.recommender.AbstractRecommender;
 import org.apache.mahout.cf.taste.impl.recommender.AllUnknownItemsCandidateItemsStrategy;
 import org.apache.mahout.cf.taste.impl.recommender.TopItems;
@@ -26,24 +22,33 @@ import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.apache.mahout.cf.taste.recommender.IDRescorer;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 public class OnlineSVDRecommender extends AbstractRecommender {
+
+    private static final int iterationCount = 30;
+    private static final double alpha = 0.01;
+    private static final double lambda = 0.02;
 
 	private static final Logger log = Logger.getLogger(OnlineSVDRecommender.class.getName());
 
 	static {
 		log.setLevel(Level.ALL);
 	}
-	private static final double MIN_FEAT_NORM = 0.0000000001;
 	private final FactorizationCachingFactorizer factorizationCachingFactorizer;
 	private final SVDRecommender delegateRecommender;
 	private final int featureCount;
 	//private final UserFactorUpdater userFactorUpdater;
-	private final double[] singularValues;
 	/**
 	 * We keep track of rated items after build, so that we don't recommend them
 	 * back to user.
 	 */
-	private final FastByIDMap<FastIDSet> itemsOfUsers;
+	//private final FastByIDMap<FastIDSet> itemsOfUsers;
+    private final FastByIDMap<PreferenceArray> itemsOfUsers;
 	private final FastByIDMap<double[]> newUserFeatures;
 	private final FastIDSet foldInNecessaryUsers;
 
@@ -57,39 +62,43 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		factorizationCachingFactorizer = new FactorizationCachingFactorizer(factorizer);
 		delegateRecommender = new SVDRecommender(dataModel, factorizationCachingFactorizer);
 		featureCount = factorizationCachingFactorizer.getCachedFactorization().numFeatures();
-		this.singularValues = new double[featureCount];
-		extractSingularValues(dataModel);
 	}
 
 	public double[] foldIn(long user, PreferenceArray ratings) {
+        foldInNecessaryUsers.remove(user);
 		final int nf = featureCount;
-		final double[] svals = singularValues;
-		double featurePrefs[] = new double[nf];
-		Arrays.fill(featurePrefs, 0.0);
+		double userFeatures[] = new double[nf];
+        // TODO initialize with some mean and std dev.
+		Arrays.fill(userFeatures, 0.0);
 
 		log.log(Level.INFO, "Folding in with preferences {0}.", ratings);
 
 		Factorization fact = factorizationCachingFactorizer.getCachedFactorization();
 		try {
-			int i = 0;
-			for (Preference pref : ratings) {
-				long iid = pref.getItemID();
-				double r = pref.getValue();
-				for (int f = 0; f < nf; f++) {
-					double fv = fact.getItemFeatures(iid)[f];
-					featurePrefs[f] += r * fv / svals[f];
-				}
-				++i;
-			}
-			foldInNecessaryUsers.remove(user);
+            double lr = alpha;
+            for (int w = 0; w < iterationCount; ++w) {
+                for (int i = 0; i < ratings.length(); ++i) {
+                    // TODO shuffle ratings
+                    Preference pref = ratings.get(i);
+                    long iid = pref.getItemID();
+                    double r = pref.getValue();
+                    double[] itemFeatures = fact.getItemFeatures(iid);
+                    double estimate = 0;
+                    for (int feature = 0; feature < userFeatures.length; feature++) {
+                        estimate += userFeatures[feature] * itemFeatures[feature];
+                    }
+                    double e = r - estimate;
+                    for (int f = 0; f < nf; f++) {
+                        userFeatures[f] += lr * (e * itemFeatures[f] - lambda * userFeatures[f]);
+                    }
+                }
+            }
 		} catch (NoSuchItemException ex) {
 			log.log(Level.SEVERE, "Non-existent items!", ex);
 			throw new RuntimeException("Non-existent items!", ex);
-		} finally {
-			//nothing to do here. :D
 		}
 
-		return featurePrefs;
+        return userFeatures;
 	}
 
 	@Override
@@ -98,7 +107,8 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
 		double[] userFeatures;
 		if (foldInNecessaryUsers.contains(userID)) {
-			userFeatures = foldIn(userID, getDataModel().getPreferencesFromUser(userID));
+            PreferenceArray userPrefs = tryToGetFreshPreferences(userID);
+			userFeatures = foldIn(userID, userPrefs);
 			try {
 				System.arraycopy(userFeatures, 0, factorization.getUserFeatures(userID), 0, featureCount);
 			} catch (NoSuchUserException e) {
@@ -112,7 +122,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		double[] itemFeatures = factorization.getItemFeatures(itemID);
 		double estimate = 0;
 		for (int feature = 0; feature < userFeatures.length; feature++) {
-			estimate += userFeatures[feature] * singularValues[feature] * itemFeatures[feature];
+			estimate += userFeatures[feature] * itemFeatures[feature];
 		}
 		return (float) estimate;
 	}
@@ -244,55 +254,13 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		itemsOfUsers.clear();
 	}
 
-	/**
-	 * Extracts singular values S from existing user/item feature matrices and
-	 * ratings.
-	 *
-	 * @param dataModel
-	 * @throws TasteException
-	 */
-	private void extractSingularValues(DataModel dataModel) throws TasteException {
-		Factorization fact = factorizationCachingFactorizer.getCachedFactorization();
-		for (int feature = 0; feature < featureCount; feature++) {
-			double ussq = 0;
-			LongPrimitiveIterator userIDs = dataModel.getUserIDs();
-			while (userIDs.hasNext()) {
-				long uid = userIDs.nextLong();
-				double uf = fact.getUserFeatures(uid)[feature];
-				ussq += uf * uf;
-			}
-			double unrm = (double) Math.sqrt(ussq);
-			if (unrm > MIN_FEAT_NORM) {
-				while (userIDs.hasNext()) {
-					long uid = userIDs.nextLong();
-					fact.getUserFeatures(uid)[feature] /= unrm;
-				}
-			}
-			double issq = 0;
-			LongPrimitiveIterator itemIDs = dataModel.getItemIDs();
-			while (itemIDs.hasNext()) {
-				long iid = itemIDs.nextLong();
-				double fv = fact.getItemFeatures(iid)[feature];
-				issq += fv * fv;
-			}
-			double inrm = (double) Math.sqrt(issq);
-			if (inrm > MIN_FEAT_NORM) {
-				while (itemIDs.hasNext()) {
-					long iid = itemIDs.nextLong();
-					fact.getItemFeatures(iid)[feature] /= inrm;
-				}
-			}
-			singularValues[feature] = unrm * inrm;
-		}
-	}
-
 	@Override
 	public List<RecommendedItem> recommend(final long userID, int howMany,
 					IDRescorer rescorer) throws TasteException {
 		//Preconditions.checkArgument(howMany >= 1, "howMany must be at least 1");
 		//log.debug("Recommending items for user ID '{}'", userID);
 
-		PreferenceArray preferencesFromUser = getDataModel().getPreferencesFromUser(userID);
+		PreferenceArray preferencesFromUser = tryToGetFreshPreferences(userID);
 		FastIDSet possibleItemIDs = getAllOtherItems(userID, preferencesFromUser);
 
 		List<RecommendedItem> topItems = TopItems.getTopItems(howMany, possibleItemIDs.iterator(), rescorer,
@@ -306,4 +274,34 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 
 		return topItems;
 	}
+
+    private PreferenceArray tryToGetFreshPreferences(long userID) throws TasteException {
+        // TODO handle non-existent user query from in-memory data models.
+        // try to get fresh data from db, if underlying DataModel somehow permits.
+        DataModel model = getDataModel();
+        PreferenceArray userPrefs;
+        //if underlying model is in-memory data model
+        if (model instanceof ReloadFromJDBCDataModel) {
+            //then it must have a JDBCDataModel as a delegate, query from that.
+            userPrefs = ((ReloadFromJDBCDataModel)model).getDelegate().getPreferencesFromUser(userID);
+            //if the model is replaceable data model,
+        } else if (model instanceof ReplaceableDataModel) {
+            ReplaceableDataModel replaceableDataModel = (ReplaceableDataModel) model;
+            //then check if it has a MySQLJDBCDataModel as its delegate,
+            if (replaceableDataModel.getDelegate() instanceof ReloadFromJDBCDataModel) {
+                // if so, query from that delegate
+                ReloadFromJDBCDataModel reloadFromJDBCDataModel =
+                        ((ReloadFromJDBCDataModel) replaceableDataModel.getDelegate());
+                userPrefs = reloadFromJDBCDataModel.getDelegate().getPreferencesFromUser(userID);
+            } else {
+                //otherwise nothing to do, query from the available model.
+                userPrefs = replaceableDataModel.getPreferencesFromUser(userID);
+            }
+        } else { //some data model we currently don't know about.
+            //again take what current model gives.
+            userPrefs = model.getPreferencesFromUser(userID);
+        }
+        return userPrefs;
+    }
+
 }
