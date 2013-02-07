@@ -45,15 +45,17 @@ public class RecommenderWS {
     static {
         predictor = new HashMap<>();
         factorizationCaches = new HashMap<>();
+        contextStates = new HashMap<>();
     }
 
     @WebMethod(operationName = "isModelAlive")
     public boolean isModelAlive(@WebParam(name = "context") String context) {
-        return predictor.containsKey(context);
+        return contextStates.get(context) == ContextState.READY;
     }
 
     @WebMethod(operationName = "fetchData")
     public String fetchData(@WebParam(name = "context") String context) {
+        ContextState current = contextStates.get(context);
         try {
             contextStates.put(context, ContextState.FETCHING);
             DBUtil dbUtil = new DBUtil();
@@ -64,7 +66,7 @@ public class RecommenderWS {
             contextStates.put(context, ContextState.FETCHED);
         } catch (Exception ex) {
             log.log(Level.SEVERE, null, ex);
-            contextStates.put(context, ContextState.INITIAL);
+            contextStates.put(context, current);
             return "error";
         }
         return "done";
@@ -357,27 +359,32 @@ public class RecommenderWS {
 
     @WebMethod(operationName = "isBuildingInProgress")
     public boolean isBuildingInProgress(@WebParam(name = "context") String context) {
-        Boolean ongoing = ongoingTrainingStates.get(context);
-        return ongoing != null && ongoing;
+        ContextState ongoing = contextStates.get(context);
+        return ongoing != null && ongoing == ContextState.BUILDING;
     }
 
-		public static void main(String[] args) throws Exception {
-			/*
+    @WebMethod(operationName = "getContextState")
+    public ContextState getContextState(@WebParam(name = "context") String context) {
+        return contextStates.get(context);
+    }
 
-			DataModel reloadModel = 
-            FactorizationCachingFactorizer cachingFactorizer = new FactorizationCachingFactorizer(new ParallelArraysSGDFactorizer(reloadModel, 25, 25));
-            Recommender recommender = new SVDRecommender(reloadModel, cachingFactorizer);
-            log.log(Level.INFO, "Data loading and training done.");
+    public static void main(String[] args) throws Exception {
+        /*
 
-            predictor.put(context, recommender);
-            factorizationCaches.put(context, cachingFactorizer);
-						*/
-			String context = "test";
-			RecommenderWS recommenderWS = new RecommenderWS();
-			recommenderWS.buildModel(context);
-			recommenderWS.getRecommendationListPaginated(context, 1, "", 1, 100);
+        DataModel reloadModel =
+        FactorizationCachingFactorizer cachingFactorizer = new FactorizationCachingFactorizer(new ParallelArraysSGDFactorizer(reloadModel, 25, 25));
+        Recommender recommender = new SVDRecommender(reloadModel, cachingFactorizer);
+        log.log(Level.INFO, "Data loading and training done.");
 
-			//recommenderWS.estimatePreference(context, 2, 1);
-		}
+        predictor.put(context, recommender);
+        factorizationCaches.put(context, cachingFactorizer);
+                    */
+        String context = "test";
+        RecommenderWS recommenderWS = new RecommenderWS();
+        recommenderWS.buildModel(context);
+        recommenderWS.getRecommendationListPaginated(context, 1, "", 1, 100);
+
+        //recommenderWS.estimatePreference(context, 2, 1);
+    }
 
 }
