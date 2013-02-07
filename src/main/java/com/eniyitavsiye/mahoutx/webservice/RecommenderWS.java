@@ -45,6 +45,7 @@ public class RecommenderWS {
     static {
         predictor = new HashMap<>();
         factorizationCaches = new HashMap<>();
+        dataModels = new HashMap<>();
         contextStates = new HashMap<>();
     }
 
