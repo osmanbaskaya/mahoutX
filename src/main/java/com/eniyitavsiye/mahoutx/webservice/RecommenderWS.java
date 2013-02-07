@@ -378,11 +378,11 @@ public class RecommenderWS {
 
         predictor.put(context, recommender);
         factorizationCaches.put(context, cachingFactorizer);
-                    */
         String context = "test";
         RecommenderWS recommenderWS = new RecommenderWS();
         recommenderWS.buildModel(context);
         recommenderWS.getRecommendationListPaginated(context, 1, "", 1, 100);
+                    */
 
         //recommenderWS.estimatePreference(context, 2, 1);
     }
