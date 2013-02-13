@@ -86,11 +86,17 @@ public class RecommenderWS {
                 || currentState == ContextState.READY)) {
             return "Illegal context state! " + currentState;
         }
+        ReplaceableDataModel model = dataModels.get(context);
+        if (!(model.getDelegate() instanceof ReloadFromJDBCDataModel)) {
+            String message = String.format(
+                    "Cannot build without in-memory data! " +
+                    "Current data delegate model is : %s.", model.getDelegate().getClass());
+            log.log(Level.SEVERE, message);
+            return message;
+        }
         contextStates.put(context, ContextState.BUILDING);
         try {
             log.log(Level.INFO, "buildItemSimilarityMatrix starts.");
-
-            ReplaceableDataModel model = dataModels.get(context);
 
             factorizerName = factorizerName == null ? "" : factorizerName;
             Factorizer factorizer;
