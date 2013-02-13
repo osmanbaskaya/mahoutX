@@ -80,7 +80,7 @@ public class RecommenderWS {
             @WebParam(name = "factorizerName") String factorizerName,
             @WebParam(name = "nFactors") int nFactors,
             @WebParam(name = "nIterations") int nIterations
-            ) {
+    ) {
         ContextState currentState = contextStates.get(context);
         if (!(currentState == ContextState.FETCHED
                 || currentState == ContextState.READY)) {
@@ -90,7 +90,7 @@ public class RecommenderWS {
         if (!(model.getDelegate() instanceof ReloadFromJDBCDataModel)) {
             String message = String.format(
                     "Cannot build without in-memory data! " +
-                    "Current data delegate model is : %s.", model.getDelegate().getClass());
+                            "Current data delegate model is : %s.", model.getDelegate().getClass());
             log.log(Level.SEVERE, message);
             return message;
         }
@@ -112,7 +112,7 @@ public class RecommenderWS {
                     break;
             }
             FactorizationCachingFactorizer cachingFactorizer =
-										new FactorizationCachingFactorizer(factorizer);
+                    new FactorizationCachingFactorizer(factorizer);
 
             Recommender recommender = new OnlineSVDRecommender(model, cachingFactorizer);
             log.log(Level.INFO, "Data loading and training done.");
@@ -137,10 +137,10 @@ public class RecommenderWS {
             @WebParam(name = "tagstring") String tagstring,
             @WebParam(name = "offset") int offset,
             @WebParam(name = "length") int length) {
-			if (tagstring == null) {
-				tagstring = "";
-			}
-			tagstring = tagstring.trim();
+        if (tagstring == null) {
+            tagstring = "";
+        }
+        tagstring = tagstring.trim();
 
         try {
             log.log(Level.INFO, "Entering getRecommendationList for user {0} in context {1}.",
@@ -167,7 +167,7 @@ public class RecommenderWS {
             return list;
         } catch (Exception ex) {
             log.log(Level.SEVERE, null, ex);
-						throw new RuntimeException(ex);
+            throw new RuntimeException(ex);
         }
     }
 
@@ -207,13 +207,13 @@ public class RecommenderWS {
             @WebParam(name = "context") String context,
             @WebParam(name = "userId") long userId,
             @WebParam(name = "itemId") long itemId,
-			@WebParam(name = "rating") byte rating) throws Exception {
+            @WebParam(name = "rating") byte rating) throws Exception {
         try {
             OnlineSVDRecommender osr = (OnlineSVDRecommender) predictor.get(context);
             osr.userPreferenceChanged(userId);//, itemId, rating);
         } catch (ClassCastException e) {
             throw new RuntimeException("Recommender for context " + context +
-                            " is not instance of OnlineSVDRecommender", e);
+                    " is not instance of OnlineSVDRecommender", e);
         }
     }
 
@@ -252,7 +252,7 @@ public class RecommenderWS {
             return list;
         } catch (Exception ex) {
             log.log(Level.SEVERE, null, ex);
-						throw new RuntimeException(ex);
+            throw new RuntimeException(ex);
         }
     }
 
@@ -280,9 +280,9 @@ public class RecommenderWS {
         FactorizationCachingFactorizer cachingFactorizer = factorizationCaches.get(context);
         final Factorization factorization = cachingFactorizer.getCachedFactorization();
 
-				Collection<Long> userIds = new DBUtil().getUsersNotFollowing(context, userId);
+        Collection<Long> userIds = new DBUtil().getUsersNotFollowing(context, userId);
 
-				class UserComparison implements Comparator<Long> {
+        class UserComparison implements Comparator<Long> {
             private double similarity(long i, long j) {
                 try {
                     return CosineDistanceMeasure.distance(factorization.getUserFeatures(i), factorization.getUserFeatures(j));
@@ -307,41 +307,39 @@ public class RecommenderWS {
 
             }
         }
-				UserComparison comparison = new UserComparison();
+        UserComparison comparison = new UserComparison();
         TopK<Long> topk = new TopK<>(20, comparison);
         for (Long id : userIds) {
-					//try {
-						//if (predictor.get(context).getDataModel().getPreferencesFromUser(id).length() > 0) {
-							topk.offer(id);
-						//}
-					//} catch (TasteException ex) {
-						//Logger.getLogger(RecommenderWS.class.getName()).log(Level.SEVERE, null, ex);
-						//throw new RuntimeException(ex);
-					//}
+            //try {
+            //if (predictor.get(context).getDataModel().getPreferencesFromUser(id).length() > 0) {
+            topk.offer(id);
+            //}
+            //} catch (TasteException ex) {
+            //Logger.getLogger(RecommenderWS.class.getName()).log(Level.SEVERE, null, ex);
+            //throw new RuntimeException(ex);
+            //}
         }
 
         List<Long> top = topk.retrieve();
-				String[] topWithSim = new String[top.size()];
-				for (int i = 0; i < topWithSim.length; ++i) {
-					long id = top.get(i);
-					topWithSim[i] = id + ";" + comparison.similarity(id, userId);
-				}
-				return topWithSim;
+        String[] topWithSim = new String[top.size()];
+        for (int i = 0; i < topWithSim.length; ++i) {
+            long id = top.get(i);
+            topWithSim[i] = id + ";" + comparison.similarity(id, userId);
+        }
+        return topWithSim;
     }
 
     @WebMethod(operationName = "hasUserRatings")
     public boolean hasUserRatings(
             @WebParam(name = "context") String context,
             @WebParam(name = "userId") final long userId) {
-			try {
-				return predictor.get(context).getDataModel().getPreferencesFromUser(userId).length() != 0;
-			} catch (Exception ex) {
-				Logger.getLogger(RecommenderWS.class.getName()).log(Level.SEVERE, null, ex);
-				return false;
-			}
-		
-		}
-
+        try {
+            return predictor.get(context).getDataModel().getPreferencesFromUser(userId).length() != 0;
+        } catch (Exception ex) {
+            Logger.getLogger(RecommenderWS.class.getName()).log(Level.SEVERE, null, ex);
+            return false;
+        }
+    }
 
     @WebMethod(operationName = "getItemNearestNeighborList")
     public Long[] getItemNearestNeighborList(
