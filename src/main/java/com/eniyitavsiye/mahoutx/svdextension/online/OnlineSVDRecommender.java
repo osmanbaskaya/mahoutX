@@ -106,15 +106,19 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 					throws TasteException {
 		Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
 		double[] userFeatures;
-		if (foldInNecessaryUsers.contains(userID)) {
+        // TODO maybe handle new users with no rating
+		if (foldInNecessaryUsers.contains(userID)) {       // any user with changed ratings
             PreferenceArray userPrefs = tryToGetFreshPreferences(userID);
 			userFeatures = foldIn(userID, userPrefs);
 			try {
+                //user was available during build process
 				System.arraycopy(userFeatures, 0, factorization.getUserFeatures(userID), 0, featureCount);
 			} catch (NoSuchUserException e) {
+                //user is new.
 				newUserFeatures.put(userID, userFeatures);
 			}
-		} else if (newUserFeatures.containsKey(userID)) {
+		} else if (newUserFeatures.containsKey(userID)) {   // new user tries to estimate
+                                                            // preference without change in ratings
 			userFeatures = newUserFeatures.get(userID);
 		} else {
 			userFeatures = factorization.getUserFeatures(userID);
@@ -281,6 +285,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	}
 
     private PreferenceArray tryToGetFreshPreferences(long userID) throws TasteException {
+        // TODO always test this after changing fetchData web method!
         // TODO handle non-existent user query from in-memory data models.
         // try to get fresh data from db, if underlying DataModel somehow permits.
         DataModel model = getDataModel();
