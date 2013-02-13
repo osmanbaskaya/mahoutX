@@ -386,13 +386,14 @@ public class RecommenderWS {
 
     @WebMethod(operationName = "isBuildingInProgress")
     public boolean isBuildingInProgress(@WebParam(name = "context") String context) {
-        ContextState ongoing = contextStates.get(context);
-        return ongoing != null && ongoing == ContextState.BUILDING;
+        ContextState ongoing = getContextState(context);
+        return ongoing == ContextState.BUILDING;
     }
 
     @WebMethod(operationName = "getContextState")
     public ContextState getContextState(@WebParam(name = "context") String context) {
-        return contextStates.get(context);
+        ContextState state = contextStates.get(context);
+        return state == null ? ContextState.UNKNOWN : state;
     }
 
     public static void main(String[] args) throws Exception {
