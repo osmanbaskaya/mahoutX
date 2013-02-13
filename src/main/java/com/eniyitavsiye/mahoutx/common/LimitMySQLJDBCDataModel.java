@@ -5,14 +5,7 @@
 package com.eniyitavsiye.mahoutx.common;
 
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.List;
-
-import javax.sql.DataSource;
-
+import com.google.common.collect.Lists;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.FastByIDMap;
 import org.apache.mahout.cf.taste.impl.model.GenericUserPreferenceArray;
@@ -23,7 +16,12 @@ import org.apache.mahout.common.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Lists;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.List;
 
 
 public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
@@ -79,7 +77,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 	    	  counter=0;
 	    	  query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn + " FROM " + preferenceTable
 		              + " WHERE id > "+offset+" AND id <= "+(offset+limit)+" ORDER BY " + userIDColumn + ", " + itemIDColumn;
-		      log.info("Executing SQL query: {}", query);
+		      log.info("Executing SQL query (offset = {}) : {}", offset, query);
 			  rs = stmt.executeQuery(query);
 		      log.info("query executed");
 		      while (rs.next()) {

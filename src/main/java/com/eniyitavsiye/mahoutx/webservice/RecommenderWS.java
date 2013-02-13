@@ -57,6 +57,7 @@ public class RecommenderWS {
     public String fetchData(@WebParam(name = "context") String context) {
         ContextState current = contextStates.get(context);
         try {
+            log.log(Level.INFO, "Beginning to fetch data for context {0}.", context);
             contextStates.put(context, ContextState.FETCHING);
             DBUtil dbUtil = new DBUtil();
             LimitMySQLJDBCDataModel model = new LimitMySQLJDBCDataModel(
@@ -66,6 +67,7 @@ public class RecommenderWS {
             ReplaceableDataModel replaceableModel = new ReplaceableDataModel(reloadModel);
             dataModels.put(context, replaceableModel);
             contextStates.put(context, ContextState.FETCHED);
+            log.log(Level.INFO, "Data fetch for context {0} is completed.", context);
         } catch (Exception ex) {
             log.log(Level.SEVERE, null, ex);
             contextStates.put(context, current);
@@ -79,8 +81,7 @@ public class RecommenderWS {
             @WebParam(name = "context") String context,
             @WebParam(name = "factorizerName") String factorizerName,
             @WebParam(name = "nFactors") int nFactors,
-            @WebParam(name = "nIterations") int nIterations
-    ) {
+            @WebParam(name = "nIterations") int nIterations ) {
         ContextState currentState = contextStates.get(context);
         if (!(currentState == ContextState.FETCHED
                 || currentState == ContextState.READY)) {
@@ -263,8 +264,7 @@ public class RecommenderWS {
         try {
             FactorizationCachingFactorizer cachingFactorizer = factorizationCaches.get(context);
             final Factorization factorization = cachingFactorizer.getCachedFactorization();
-            double[] features= factorization.getUserFeatures(userId);
-            return features;
+            return factorization.getUserFeatures(userId);
         } catch (Exception ex) {
             log.log(Level.SEVERE, null, ex);
             throw ex;
@@ -372,7 +372,6 @@ public class RecommenderWS {
                 } else {
                     return 0;
                 }
-
             }
         });
         for (Entry<Long, Integer> entry : userIDMappings) {
