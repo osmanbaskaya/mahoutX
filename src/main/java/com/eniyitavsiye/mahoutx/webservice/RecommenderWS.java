@@ -8,7 +8,6 @@ import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import com.eniyitavsiye.mahoutx.svdextension.online.OnlineSVDRecommender;
 import org.apache.mahout.cf.taste.common.NoSuchItemException;
 import org.apache.mahout.cf.taste.common.NoSuchUserException;
-import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.common.TopK;
 import org.apache.mahout.cf.taste.example.kddcup.track1.svd.ParallelArraysSGDFactorizer;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
@@ -60,7 +59,9 @@ public class RecommenderWS {
         try {
             contextStates.put(context, ContextState.FETCHING);
             DBUtil dbUtil = new DBUtil();
-            LimitMySQLJDBCDataModel model = new LimitMySQLJDBCDataModel(new ConnectionPoolDataSource(dbUtil.getDataSource()), context + "_rating", "user_id", "item_id", "rating", null);
+            LimitMySQLJDBCDataModel model = new LimitMySQLJDBCDataModel(
+                    new ConnectionPoolDataSource(dbUtil.getDataSource()),
+                    context + "_rating", "user_id", "item_id", "rating", null);
             ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(model);
             ReplaceableDataModel replaceableModel = new ReplaceableDataModel(reloadModel);
             dataModels.put(context, replaceableModel);
@@ -201,14 +202,32 @@ public class RecommenderWS {
             @WebParam(name = "userId") long userId,
             @WebParam(name = "itemId") long itemId,
 			@WebParam(name = "rating") byte rating) throws Exception {
-			try {
-                OnlineSVDRecommender osr = (OnlineSVDRecommender) predictor.get(context);
-				osr.addPreference(userId, itemId, rating);
-			} catch (ClassCastException e) {
-				throw new RuntimeException("Recommender for context " + context + 
-								" is not instance of OnlineSVDRecommender", e);
-			}
-		}
+        try {
+            OnlineSVDRecommender osr = (OnlineSVDRecommender) predictor.get(context);
+            osr.userPreferenceChanged(userId);//, itemId, rating);
+        } catch (ClassCastException e) {
+            throw new RuntimeException("Recommender for context " + context +
+                            " is not instance of OnlineSVDRecommender", e);
+        }
+    }
+
+    @WebMethod(operationName = "removePreference")
+    public void removePreference(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "userId") long userId,
+            @WebParam(name = "itemId") long itemId,
+            @WebParam(name = "rating") byte rating) throws Exception {
+        addPreference(context, userId, itemId, rating);
+    }
+
+    @WebMethod(operationName = "changePreference")
+    public void changePreference(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "userId") long userId,
+            @WebParam(name = "itemId") long itemId,
+            @WebParam(name = "rating") byte rating) throws Exception {
+        addPreference(context, userId, itemId, rating);
+    }
 
     @WebMethod(operationName = "getRecommendationList")
     public String[] getRecommendationList(

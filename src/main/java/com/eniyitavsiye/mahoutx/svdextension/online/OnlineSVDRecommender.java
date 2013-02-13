@@ -127,6 +127,11 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		return (float) estimate;
 	}
 
+    public void userPreferenceChanged(long userID) {
+        foldInNecessaryUsers.add(userID);
+    }
+
+    /*
 	public void addPreference(long userID, long itemID, float rat) throws TasteException {
 		foldInNecessaryUsers.add(userID);
 		/*
@@ -140,14 +145,14 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 
 		 //here we try to get the feature vector to update.
 		 double[] features;
-		 if (newUserFeatures.containsKey(userID)) { 
-		 // CASE 2 : User does not exist at build time, but not first encounter			
+		 if (newUserFeatures.containsKey(userID)) {
+		 // CASE 2 : User does not exist at build time, but not first encounter
 		 // (rating after CASE 3)
 		 features = newUserFeatures.get(userID);
 		 } else {
 		 try {
 		 delegateRecommender.getDataModel().getPreferencesFromUser(userID);
-		 // CASE 1 : User that exists at build time gives new rating  
+		 // CASE 1 : User that exists at build time gives new rating
 		 features = factorization.getUserFeatures(userID);
 		 } catch (NoSuchUserException e) {
 		 // CASE 3 : User does not exist at build time, and first encounter
@@ -156,8 +161,8 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 		 }
 		 }
 		 userFactorUpdater.updateUserFactor(features, factorization, userID, itemID, rat);
-		 */
 	}
+		 */
 
 	/*
 	 @Override
