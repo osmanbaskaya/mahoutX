@@ -121,7 +121,15 @@ public class OnlineSVDRecommender extends AbstractRecommender {
                                                             // preference without change in ratings
 			userFeatures = newUserFeatures.get(userID);
 		} else {
-			userFeatures = factorization.getUserFeatures(userID);
+            try {
+                //user was available during build process, but no change in ratings
+                userFeatures = factorization.getUserFeatures(userID);
+            } catch (NoSuchUserException e) {
+                //illegal!
+                log.log(Level.SEVERE, "A new user without rating data tries to estimate preference! {0} {1}",
+                        new Object[] {userID, itemID});
+                return -1;
+            }
 		}
 		double[] itemFeatures = factorization.getItemFeatures(itemID);
 		double estimate = 0;
