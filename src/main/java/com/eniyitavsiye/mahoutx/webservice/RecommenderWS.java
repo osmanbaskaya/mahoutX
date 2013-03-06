@@ -57,7 +57,8 @@ public class RecommenderWS {
     public String fetchData(@WebParam(name = "context") String context) {
         ContextState current = contextStates.get(context);
         try {
-            log.log(Level.INFO, "Beginning to fetch data for context {0}.", context);
+            log.log(Level.INFO, "Beginning to fetch data for context {0}.",
+                    context);
             contextStates.put(context, ContextState.FETCHING);
             DBUtil dbUtil = new DBUtil();
             LimitMySQLJDBCDataModel model = new LimitMySQLJDBCDataModel(
@@ -97,7 +98,7 @@ public class RecommenderWS {
         }
         contextStates.put(context, ContextState.BUILDING);
         try {
-            log.log(Level.INFO, "buildItemSimilarityMatrix starts.");
+            log.log(Level.INFO, "buildItemSimilarityMatrix starts with {0} factorizer.", factorizerName);
 
             factorizerName = factorizerName == null ? "" : factorizerName;
             Factorizer factorizer;
