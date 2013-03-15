@@ -2,7 +2,6 @@ package com.eniyitavsiye.mahoutx.webservice;
 
 import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
 import com.eniyitavsiye.mahoutx.common.LimitMySQLJDBCDataModel;
-import com.eniyitavsiye.mahoutx.common.ReplaceableDataModel;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import com.eniyitavsiye.mahoutx.svdextension.online.OnlineSVDRecommender;
@@ -17,6 +16,7 @@ import org.apache.mahout.cf.taste.impl.recommender.svd.ALSWRFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.ExpectationMaximizationSVDFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorizer;
+import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.common.distance.CosineDistanceMeasure;
@@ -37,7 +37,7 @@ public class RecommenderWS {
 
     private static HashMap<String, Recommender> predictor;
     private static HashMap<String, FactorizationCachingFactorizer> factorizationCaches;
-    private static HashMap<String, ReplaceableDataModel> dataModels;
+    private static HashMap<String, DataModel> dataModels;
     private static HashMap<String, ContextState> contextStates;
     private static final Logger log = Logger.getLogger(RecommenderWS.class.getName());
 
@@ -67,8 +67,8 @@ public class RecommenderWS {
                     new ConnectionPoolDataSource(dbUtil.getDataSource()),
                     context + "_rating", "user_id", "item_id", "rating", null);
             ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(model);
-            ReplaceableDataModel replaceableModel = new ReplaceableDataModel(reloadModel);
-            dataModels.put(context, replaceableModel);
+            //ReplaceableDataModel replaceableModel = new ReplaceableDataModel(reloadModel);
+            dataModels.put(context, reloadModel);
             contextStates.put(context, ContextState.FETCHED);
             log.log(Level.INFO, "Data fetch for context {0} is completed.", context);
         } catch (Exception ex) {
@@ -90,7 +90,8 @@ public class RecommenderWS {
                 || currentState == ContextState.READY)) {
             return "Illegal context state! " + currentState;
         }
-        ReplaceableDataModel model = dataModels.get(context);
+        DataModel model = dataModels.get(context);
+        /*
         if (!(model.getDelegate() instanceof ReloadFromJDBCDataModel)) {
             String message = String.format(
                     "Cannot build without in-memory data! " +
@@ -98,6 +99,7 @@ public class RecommenderWS {
             log.log(Level.SEVERE, message);
             return message;
         }
+        */
         contextStates.put(context, ContextState.BUILDING);
         try {
             log.log(Level.INFO, "buildItemSimilarityMatrix starts with {0} factorizer.", factorizerName);
