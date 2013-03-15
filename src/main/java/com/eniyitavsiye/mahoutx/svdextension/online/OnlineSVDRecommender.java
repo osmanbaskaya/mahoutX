@@ -10,7 +10,7 @@ import org.apache.mahout.cf.taste.impl.common.FastByIDMap;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
 import org.apache.mahout.cf.taste.impl.recommender.AbstractRecommender;
-import org.apache.mahout.cf.taste.impl.recommender.AllUnknownItemsCandidateItemsStrategy;
+import org.apache.mahout.cf.taste.impl.recommender.PreferredItemsNeighborhoodCandidateItemsStrategy;
 import org.apache.mahout.cf.taste.impl.recommender.TopItems;
 import org.apache.mahout.cf.taste.impl.recommender.TopItems.Estimator;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
@@ -54,7 +54,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 
     public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer)
             throws TasteException {
-        super(dataModel, new AllUnknownItemsCandidateItemsStrategy());
+        super(dataModel, new PreferredItemsNeighborhoodCandidateItemsStrategy());
         //this.userFactorUpdater = userFactorUpdater;
         this.itemsOfUsers = new FastByIDMap<>();
         this.newUserFeatures = new FastByIDMap<>();
@@ -277,8 +277,11 @@ public class OnlineSVDRecommender extends AbstractRecommender {
         //Preconditions.checkArgument(howMany >= 1, "howMany must be at least 1");
         //log.debug("Recommending items for user ID '{}'", userID);
 
+        log.log(Level.INFO, "Beginning generation of recommendations for user : {0}", userID);
         PreferenceArray preferencesFromUser = tryToGetFreshPreferences(userID);
+        log.log(Level.INFO, "User preferences: {0}", preferencesFromUser);
         FastIDSet possibleItemIDs = getAllOtherItems(userID, preferencesFromUser);
+        log.log(Level.INFO, "Candidtate items for user: {0}", possibleItemIDs);
 
         List<RecommendedItem> topItems = TopItems.getTopItems(howMany, possibleItemIDs.iterator(), rescorer,
                 new Estimator<Long>() {
@@ -287,7 +290,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
                         return estimatePreference(userID, itemID);
                     }
                 });
-        //log.debug("Recommendations are: {}", topItems);
+        log.log(Level.INFO, "Recommendations are: {0}", topItems);
 
         return topItems;
     }
@@ -299,7 +302,10 @@ public class OnlineSVDRecommender extends AbstractRecommender {
         DataModel model = getDataModel();
         PreferenceArray userPrefs;
         //if underlying model is in-memory data model
-        if (model instanceof ReloadFromJDBCDataModel) {
+        if (true) {
+            return model.getPreferencesFromUser(userID);
+        }
+        else if (model instanceof ReloadFromJDBCDataModel) {
             //then it must have a JDBCDataModel as a delegate, query from that.
             userPrefs = ((ReloadFromJDBCDataModel)model).getDelegate().getPreferencesFromUser(userID);
             //if the model is replaceable data model,
