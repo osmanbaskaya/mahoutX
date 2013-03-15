@@ -42,10 +42,12 @@ public class RecommenderWS {
     private static final Logger log = Logger.getLogger(RecommenderWS.class.getName());
 
     static {
-        predictor = new HashMap<>();
-        factorizationCaches = new HashMap<>();
-        dataModels = new HashMap<>();
-        contextStates = new HashMap<>();
+        if (predictor == null) {
+            predictor = new HashMap<>();
+            factorizationCaches = new HashMap<>();
+            dataModels = new HashMap<>();
+            contextStates = new HashMap<>();
+        }
     }
 
     @WebMethod(operationName = "isModelAlive")
