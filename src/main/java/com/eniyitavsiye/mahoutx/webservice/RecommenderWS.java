@@ -104,6 +104,32 @@ public class RecommenderWS {
     }
   }
 
+  @WebMethod(operationName = "evaluateRecommenderIR")
+  public String evaluateRecommenderIR(
+          @WebParam(name = "context") final String context,
+          @WebParam(name = "trainingPercent") final double trainingPercent,
+          @WebParam(name = "evalPercent") final double evalPercent,
+          @WebParam(name = "at") final int at) {
+    try {
+//      RecommenderBuilder builder = new RecommenderBuilder() {
+//        @Override
+//        public Recommender buildRecommender(DataModel model)
+//                throws TasteException {
+//          return predictor.get(context);
+//        }
+//      };
+//      RecommenderIRStatsEvaluator evaluator =
+//              new GenericRecommenderIRStatsEvaluator();
+//      IRStatistics stats=evaluator.evaluate(builder, null, dataModels.get(context),
+//              null, at,
+//              GenericRecommenderIRStatsEvaluator.CHOOSE_THRESHOLD, evalPercent);
+      return "";
+    } catch (Exception ex) {
+      log.log(Level.SEVERE, null, ex);
+      return ex.getMessage();
+    }
+  }
+
   @WebMethod(operationName = "buildModel")
   public String buildModel(
           @WebParam(name = "context") String context,
@@ -266,9 +292,13 @@ public class RecommenderWS {
       ArrayList<Float> list = onlineMaeHistories.get(context);
       list.add((float) (rating - predictedRating));
 
-    } catch (Exception e) {
+    } catch (ClassCastException e) {
       throw new RuntimeException("Recommender for context " + context
               + " is not instance of OnlineSVDRecommender", e);
+    }
+    catch(NoSuchItemException e)
+    {
+      log.log(Level.FINE, null, e);
     }
   }
 
@@ -466,5 +496,3 @@ public class RecommenderWS {
     //recommenderWS.estimatePreference(context, 2, 1);
   }
 }
-
-
