@@ -310,12 +310,12 @@ public class RecommenderWS {
       list.add((float) (rating - predictedRating));
 
     } catch (ClassCastException e) {
-      throw new RuntimeException("Recommender for context " + context
+      log.log(Level.WARNING, "Recommender for context " + context
               + " is not instance of OnlineSVDRecommender", e);
-    }
-    catch(NoSuchItemException e)
-    {
+    } catch(NoSuchItemException e) {
       log.log(Level.FINE, null, e);
+    } catch (Exception e) {
+        log.log(Level.SEVERE, "An unexpected exception occurred!", e);
     }
   }
 
