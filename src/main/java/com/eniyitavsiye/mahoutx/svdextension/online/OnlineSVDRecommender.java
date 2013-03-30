@@ -10,7 +10,6 @@ import org.apache.mahout.cf.taste.impl.common.FastByIDMap;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
 import org.apache.mahout.cf.taste.impl.recommender.AbstractRecommender;
-import org.apache.mahout.cf.taste.impl.recommender.PreferredItemsNeighborhoodCandidateItemsStrategy;
 import org.apache.mahout.cf.taste.impl.recommender.TopItems;
 import org.apache.mahout.cf.taste.impl.recommender.TopItems.Estimator;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
@@ -19,6 +18,7 @@ import org.apache.mahout.cf.taste.impl.recommender.svd.SVDRecommender;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.model.Preference;
 import org.apache.mahout.cf.taste.model.PreferenceArray;
+import org.apache.mahout.cf.taste.recommender.CandidateItemsStrategy;
 import org.apache.mahout.cf.taste.recommender.IDRescorer;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 
@@ -52,9 +52,9 @@ public class OnlineSVDRecommender extends AbstractRecommender {
     private final FastByIDMap<double[]> newUserFeatures;
     private final FastIDSet foldInNecessaryUsers;
 
-    public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer)
+    public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer, CandidateItemsStrategy strategy)
             throws TasteException {
-        super(dataModel, new PreferredItemsNeighborhoodCandidateItemsStrategy());
+        super(dataModel, strategy);
         //this.userFactorUpdater = userFactorUpdater;
         this.itemsOfUsers = new FastByIDMap<>();
         this.newUserFeatures = new FastByIDMap<>();

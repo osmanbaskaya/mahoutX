@@ -16,11 +16,13 @@ import org.apache.mahout.cf.taste.impl.common.FastIDSet;
 import org.apache.mahout.cf.taste.impl.eval.AverageAbsoluteDifferenceRecommenderEvaluator;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ConnectionPoolDataSource;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
+import org.apache.mahout.cf.taste.impl.recommender.AllUnknownItemsCandidateItemsStrategy;
 import org.apache.mahout.cf.taste.impl.recommender.svd.ALSWRFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.ExpectationMaximizationSVDFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorizer;
 import org.apache.mahout.cf.taste.model.DataModel;
+import org.apache.mahout.cf.taste.recommender.CandidateItemsStrategy;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.common.distance.CosineDistanceMeasure;
@@ -135,7 +137,8 @@ public class RecommenderWS {
           @WebParam(name = "context") String context,
           @WebParam(name = "factorizerName") String factorizerName,
           @WebParam(name = "nFactors") int nFactors,
-          @WebParam(name = "nIterations") int nIterations) {
+          @WebParam(name = "nIterations") int nIterations,
+          @WebParam(name = "candidateItemStrategy") String candidateItemStrategy) {
     ContextState currentState = contextStates.get(context);
     if (!(currentState == ContextState.FETCHED
             || currentState == ContextState.READY)) {
@@ -171,7 +174,21 @@ public class RecommenderWS {
       FactorizationCachingFactorizer cachingFactorizer =
               new FactorizationCachingFactorizer(factorizer);
 
-      Recommender recommender = new OnlineSVDRecommender(model, cachingFactorizer);
+      if (candidateItemStrategy == null) {
+          candidateItemStrategy = "AllUnknownItemsCandidateItemsStrategy";
+      }
+      CandidateItemsStrategy strategy;
+      try {
+          strategy =
+                  (CandidateItemsStrategy) Class.forName("org.apache.mahout.cf.taste.impl.recommender." +
+                          candidateItemStrategy).newInstance();
+      } catch (RuntimeException e) {
+          log.log(Level.WARNING, "Could not instantiate strategy: {0}. Using default AllUnkownItemsCandidateItemsStrategy", candidateItemStrategy);
+          log.log(Level.WARNING, null, e);
+          strategy = new AllUnknownItemsCandidateItemsStrategy();
+      }
+
+      Recommender recommender = new OnlineSVDRecommender(model, cachingFactorizer, strategy);
       log.log(Level.INFO, "Data loading and training done.");
 
 
