@@ -108,13 +108,8 @@ public class RecommenderWS {
           @WebParam(name = "trainingPercent") final double trainingPercent,
           @WebParam(name = "evalPercent") final double evalPercent) {
     try {
-      RecommenderBuilder builder = new RecommenderBuilder() {
-        @Override
-        public Recommender buildRecommender(DataModel model)
-                throws TasteException {
-          return predictor.get(context);
-        }
-      };
+
+      RecommenderBuilder builder = builders.get(context);
       RecommenderEvaluator evaluator = new AverageAbsoluteDifferenceRecommenderEvaluator();
       double score = evaluator.evaluate(builder, null, dataModels.get(context), trainingPercent, evalPercent);
       return "" + score;
