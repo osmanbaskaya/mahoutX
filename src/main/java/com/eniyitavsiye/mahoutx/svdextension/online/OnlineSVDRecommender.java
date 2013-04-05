@@ -52,6 +52,10 @@ public class OnlineSVDRecommender extends AbstractRecommender {
     private final FastByIDMap<double[]> newUserFeatures;
     private final FastIDSet foldInNecessaryUsers;
 
+    public FactorizationCachingFactorizer getFactorizationCachingFactorizer() {
+        return factorizationCachingFactorizer;
+    }
+
     public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer, CandidateItemsStrategy strategy)
             throws TasteException {
         super(dataModel, strategy);

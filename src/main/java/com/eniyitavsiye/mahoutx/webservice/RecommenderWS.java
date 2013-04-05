@@ -2,6 +2,7 @@ package com.eniyitavsiye.mahoutx.webservice;
 
 import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
 import com.eniyitavsiye.mahoutx.common.LimitMySQLJDBCDataModel;
+import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsEvaluator;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import com.eniyitavsiye.mahoutx.svdextension.online.OnlineSVDRecommender;
@@ -39,6 +40,7 @@ import java.util.logging.Logger;
 public class RecommenderWS {
 
   private static HashMap<String, Recommender> predictor;
+  private static HashMap<String, RecommenderBuilder> builders;
   private static HashMap<String, FactorizationCachingFactorizer> factorizationCaches;
   private static HashMap<String, DataModel> dataModels;
   private static HashMap<String, ContextState> contextStates;
@@ -48,6 +50,7 @@ public class RecommenderWS {
   static {
     if (predictor == null) {
       predictor = new HashMap<>();
+      builders = new HashMap<>();
       factorizationCaches = new HashMap<>();
       dataModels = new HashMap<>();
       contextStates = new HashMap<>();
@@ -84,6 +87,21 @@ public class RecommenderWS {
     return "done";
   }
 
+  @WebMethod(operationName = "evaluateRecommenderRecall")
+  public String evaluateRecommenderRecall(
+          @WebParam(name = "context") final String context,
+          @WebParam(name = "nUnratedItems") final int nUnratedItems,
+          @WebParam(name = "listSize") final int listSize,
+          @WebParam(name = "trainingPercent") final double trainingPercent,
+          @WebParam(name = "relevanceThreshold") final double relevanceThreshold,
+          @WebParam(name = "evalPercent") final double evalPercent) throws TasteException {
+      //TODO maybe later check if no configuration exists, or no datamodel available, handle exceptions and so on...
+
+      KorenIRStatsEvaluator kirse = new KorenIRStatsEvaluator(trainingPercent, nUnratedItems);
+      return kirse.evaluate(builders.get(context), null, dataModels.get(context), null, listSize, relevanceThreshold,
+              evalPercent).getRecall() + "";
+  }
+
   @WebMethod(operationName = "evaluateRecommenderMae")
   public String evaluateRecommenderMae(
           @WebParam(name = "context") final String context,
@@ -106,104 +124,96 @@ public class RecommenderWS {
     }
   }
 
-  @WebMethod(operationName = "evaluateRecommenderIR")
-  public String evaluateRecommenderIR(
-          @WebParam(name = "context") final String context,
-          @WebParam(name = "trainingPercent") final double trainingPercent,
-          @WebParam(name = "evalPercent") final double evalPercent,
-          @WebParam(name = "at") final int at) {
-    try {
-//      RecommenderBuilder builder = new RecommenderBuilder() {
-//        @Override
-//        public Recommender buildRecommender(DataModel model)
-//                throws TasteException {
-//          return predictor.get(context);
-//        }
-//      };
-//      RecommenderIRStatsEvaluator evaluator =
-//              new GenericRecommenderIRStatsEvaluator();
-//      IRStatistics stats=evaluator.evaluate(builder, null, dataModels.get(context),
-//              null, at,
-//              GenericRecommenderIRStatsEvaluator.CHOOSE_THRESHOLD, evalPercent);
-      return "";
-    } catch (Exception ex) {
-      log.log(Level.SEVERE, null, ex);
-      return ex.getMessage();
-    }
-  }
-
   @WebMethod(operationName = "buildModel")
   public String buildModel(
+          @WebParam(name = "context") String context) {
+      /*
+      if (!(model.getDelegate() instanceof ReloadFromJDBCDataModel)) {
+      String message = String.format(
+      "Cannot build without in-memory data! " +
+      "Current data delegate model is : %s.", model.getDelegate().getClass());
+      log.log(Level.SEVERE, message);
+      return message;
+      }
+      */
+      ContextState currentState = contextStates.get(context);
+      if (!(currentState == ContextState.CONFIGURED
+              || currentState == ContextState.READY)) {
+          return "Illegal context state! " + currentState;
+      }
+      contextStates.put(context, ContextState.BUILDING);
+      DataModel model = dataModels.get(context);
+
+      RecommenderBuilder builder = builders.get(context);
+
+      try {
+          OnlineSVDRecommender osv = (OnlineSVDRecommender) builder.buildRecommender(model);
+
+          predictor.put(context, osv);
+          factorizationCaches.put(context, osv.getFactorizationCachingFactorizer());
+          contextStates.put(context, ContextState.READY);
+          onlineMaeHistories.put(context, new ArrayList<Float>());
+          return "done";
+      } catch (TasteException e) {
+          // return to old state, whatever it is.
+          log.log(Level.WARNING, "Some exception occurred while building recommender.", e);
+          contextStates.put(context, currentState);
+          return "error";
+      }
+  }
+
+  @WebMethod(operationName = "setModelConfiguration")
+  public String setModelConfiguration(
           @WebParam(name = "context") String context,
           @WebParam(name = "factorizerName") String factorizerName,
-          @WebParam(name = "nFactors") int nFactors,
-          @WebParam(name = "nIterations") int nIterations,
-          @WebParam(name = "candidateItemStrategy") String candidateItemStrategy) {
-    ContextState currentState = contextStates.get(context);
-    if (!(currentState == ContextState.FETCHED
-            || currentState == ContextState.READY)) {
-      return "Illegal context state! " + currentState;
-    }
-    DataModel model = dataModels.get(context);
-    /*
-     if (!(model.getDelegate() instanceof ReloadFromJDBCDataModel)) {
-     String message = String.format(
-     "Cannot build without in-memory data! " +
-     "Current data delegate model is : %s.", model.getDelegate().getClass());
-     log.log(Level.SEVERE, message);
-     return message;
-     }
-     */
-    contextStates.put(context, ContextState.BUILDING);
-    try {
-      log.log(Level.INFO, "buildItemSimilarityMatrix starts with {0} factorizer.", factorizerName);
-
+          @WebParam(name = "nFactors") final int nFactors,
+          @WebParam(name = "nIterations") final int nIterations,
+          @WebParam(name = "candidateItemStrategy") final String candidateItemStrategy) {
       factorizerName = factorizerName == null ? "" : factorizerName;
-      Factorizer factorizer;
-      switch (factorizerName) {
-        case "ExpectationMaximizationSVDFactorizer":
-          factorizer = new ExpectationMaximizationSVDFactorizer(model, nFactors, nIterations);
-          break;
-        case "ALSWRFactorizer":
-          factorizer = new ALSWRFactorizer(model, nFactors, 0.005, nIterations);
-          break;
-        default:
-          factorizer = new ParallelArraysSGDFactorizer(model, nFactors, nIterations);
-          break;
-      }
-      FactorizationCachingFactorizer cachingFactorizer =
-              new FactorizationCachingFactorizer(factorizer);
+      final String fn = factorizerName;
+      RecommenderBuilder builder = new RecommenderBuilder() {
+          @Override
+          public Recommender buildRecommender(DataModel dataModel) throws TasteException {
+          log.log(Level.INFO, "buildItemSimilarityMatrix starts with {0} factorizer.", fn);
+          Factorizer factorizer;
+          switch (fn) {
+              case "ExpectationMaximizationSVDFactorizer":
+                  factorizer = new ExpectationMaximizationSVDFactorizer(dataModel, nFactors, nIterations);
+                  break;
+              case "ALSWRFactorizer":
+                  factorizer = new ALSWRFactorizer(dataModel, nFactors, 0.005, nIterations);
+                  break;
+              default:
+                  factorizer = new ParallelArraysSGDFactorizer(dataModel, nFactors, nIterations);
+                  break;
+          }
+          FactorizationCachingFactorizer cachingFactorizer =
+                  new FactorizationCachingFactorizer(factorizer);
 
-      if (candidateItemStrategy == null) {
-          candidateItemStrategy = "AllUnknownItemsCandidateItemsStrategy";
-      }
-      CandidateItemsStrategy strategy;
-      try {
-          strategy =
-                  (CandidateItemsStrategy) Class.forName("org.apache.mahout.cf.taste.impl.recommender." +
-                          candidateItemStrategy).newInstance();
-      } catch (RuntimeException e) {
-          log.log(Level.WARNING, "Could not instantiate strategy: {0}. Using default AllUnkownItemsCandidateItemsStrategy", candidateItemStrategy);
-          log.log(Level.WARNING, null, e);
-          strategy = new AllUnknownItemsCandidateItemsStrategy();
-      }
+          String cs = candidateItemStrategy;
+          if (cs == null) {
+              cs = "AllUnknownItemsCandidateItemsStrategy";
+          }
+          CandidateItemsStrategy strategy;
+          try {
+              strategy = (CandidateItemsStrategy)
+                              Class.forName("org.apache.mahout.cf.taste.impl.recommender." + cs)
+                                      .newInstance();
+          } catch (Exception e) {
+              log.log(Level.WARNING, "Could not instantiate strategy: {0}. Using default AllUnkownItemsCandidateItemsStrategy", candidateItemStrategy);
+              log.log(Level.WARNING, null, e);
+              strategy = new AllUnknownItemsCandidateItemsStrategy();
+          }
 
-      Recommender recommender = new OnlineSVDRecommender(model, cachingFactorizer, strategy);
-      log.log(Level.INFO, "Data loading and training done.");
+          return new OnlineSVDRecommender(dataModel, cachingFactorizer, strategy);
+          }
+      };
+      log.log(Level.INFO, "Configuration set.");
 
 
-      predictor.put(context, recommender);
-      factorizationCaches.put(context, cachingFactorizer);
-      contextStates.put(context, ContextState.READY);
-      onlineMaeHistories.put(context, new ArrayList<Float>());
-
+      builders.put(context, builder);
+      contextStates.put(context, ContextState.CONFIGURED);
       return "done";
-    } catch (Exception ex) {
-      // return to old state, whatever it is.
-      contextStates.put(context, currentState);
-      log.log(Level.SEVERE, null, ex);
-      return "error";
-    }
   }
 
   @WebMethod(operationName = "getRecommendationListPaginated")
@@ -512,4 +522,5 @@ public class RecommenderWS {
      */
     //recommenderWS.estimatePreference(context, 2, 1);
   }
+
 }
