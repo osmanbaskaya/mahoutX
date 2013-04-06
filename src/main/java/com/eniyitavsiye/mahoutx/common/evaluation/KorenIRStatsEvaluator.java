@@ -51,9 +51,7 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
         FastByIDMap<PreferenceArray> testPrefs = new FastByIDMap<>(
                 1 + (int) (evaluationPercentage * numUsers));
 
-        DataModel trainingDataModel = new GenericDataModel(trainingPrefs);
 
-        final Recommender recommender = recommenderBuilder.buildRecommender(trainingDataModel);
 
         LongPrimitiveIterator it = dataModel.getUserIDs();
         while (it.hasNext()) {
@@ -63,6 +61,9 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
             }
         }
 
+        DataModel trainingDataModel = new GenericDataModel(trainingPrefs);
+        final Recommender recommender = recommenderBuilder.buildRecommender(trainingDataModel);
+
         List<Preference> relevantPreferences = new ArrayList<>();
 
         LongPrimitiveIterator iterator = testPrefs.keySetIterator();
@@ -70,7 +71,8 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
             long userID = iterator.nextLong();
             PreferenceArray prefs = testPrefs.get(userID);
             for (Preference pref : prefs) {
-                if (pref.getValue() > relevanceThreshold && existsInData(trainingDataModel, pref.getItemID())) {
+                if (pref.getValue() >= relevanceThreshold &&
+                        existsInData(trainingDataModel, pref.getItemID())) {
                     relevantPreferences.add(pref);
                 }
             }
