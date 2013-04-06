@@ -169,7 +169,7 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
         }
         Collections.shuffle(list);
 
-        return list.subList(0, nUnratedItems);
+        return list.subList(0, Math.min(list.size(), nUnratedItems));
     }
 
     private boolean existsInData(DataModel trainingDataModel, long itemID) {
