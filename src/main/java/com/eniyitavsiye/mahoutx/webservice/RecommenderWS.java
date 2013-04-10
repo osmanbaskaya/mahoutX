@@ -17,15 +17,23 @@ import org.apache.mahout.cf.taste.impl.common.FastIDSet;
 import org.apache.mahout.cf.taste.impl.eval.AverageAbsoluteDifferenceRecommenderEvaluator;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ConnectionPoolDataSource;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
+import org.apache.mahout.cf.taste.impl.neighborhood.NearestNUserNeighborhood;
+import org.apache.mahout.cf.taste.impl.neighborhood.ThresholdUserNeighborhood;
 import org.apache.mahout.cf.taste.impl.recommender.AllUnknownItemsCandidateItemsStrategy;
+import org.apache.mahout.cf.taste.impl.recommender.GenericItemBasedRecommender;
+import org.apache.mahout.cf.taste.impl.recommender.GenericUserBasedRecommender;
 import org.apache.mahout.cf.taste.impl.recommender.svd.ALSWRFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.ExpectationMaximizationSVDFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorizer;
+import org.apache.mahout.cf.taste.impl.similarity.UncenteredCosineSimilarity;
 import org.apache.mahout.cf.taste.model.DataModel;
+import org.apache.mahout.cf.taste.neighborhood.UserNeighborhood;
 import org.apache.mahout.cf.taste.recommender.CandidateItemsStrategy;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
+import org.apache.mahout.cf.taste.similarity.ItemSimilarity;
+import org.apache.mahout.cf.taste.similarity.UserSimilarity;
 import org.apache.mahout.common.distance.CosineDistanceMeasure;
 
 import javax.jws.WebMethod;
@@ -155,6 +163,58 @@ public class RecommenderWS {
             contextStates.put(context, currentState);
             return "error";
         }
+    }
+
+    @WebMethod(operationName = "setNeighborhoodModelConfiguration")
+    public String setNeighborhoodModelConfiguration(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "isBasedOnItems") final boolean isBasedOnItems,
+            @WebParam(name = "similarityType") final String similarityType,
+            @WebParam(name = "similarityThreshold") final Double similarityThreshold,
+            @WebParam(name = "nMostSimilarUsers") final Integer nMostSimilarUsers,
+            @WebParam(name = "neighborhoodType") final String neighborhoodType) {
+
+        RecommenderBuilder builder = new RecommenderBuilder() {
+            @Override
+            public Recommender buildRecommender(DataModel model) throws TasteException {
+                Object similarity;
+                try {
+                    similarity =
+                            Class.forName("org.apache.mahout.cf.taste.impl.similarity" + similarityType)
+                                 .getConstructor(DataModel.class)
+                                 .newInstance(model);
+                } catch (Exception e) {
+                    log.log(Level.WARNING, "Could not find class or constructor for class: {0}\n" +
+                            "Caused by: {1}.\n" +
+                            "Using UncenteredCosineSimilarity.",
+                            new Object[] {similarityType, e});
+                    similarity = new UncenteredCosineSimilarity(model);
+                }
+                if (isBasedOnItems) {
+                    return new GenericItemBasedRecommender(model, (ItemSimilarity) similarity);
+                } else {
+                    UserNeighborhood neighborhood;
+                    UserSimilarity userSimilarity = (UserSimilarity) similarity;
+                    switch (neighborhoodType) {
+                        case "NearestNUserNeighborhood":
+                            neighborhood = new NearestNUserNeighborhood(nMostSimilarUsers, similarityThreshold, userSimilarity, model);
+                            break;
+                        default:
+                            log.log(Level.WARNING, "Not a known UserNeighborhood class name: {0}.\n" +
+                                    "Using ThresholdUserNeighborhood.", neighborhoodType);
+                        case "ThresholdUserNeighborhood":
+                            neighborhood = new ThresholdUserNeighborhood(similarityThreshold, userSimilarity, model);
+                    }
+                    return new GenericUserBasedRecommender(model, neighborhood, userSimilarity);
+                }
+            }
+        };
+
+        log.log(Level.INFO, "Neighborhood based configuration set.");
+
+        builders.put(context, builder);
+        contextStates.put(context, ContextState.CONFIGURED);
+        return "done";
     }
 
     @WebMethod(operationName = "setModelConfiguration")
