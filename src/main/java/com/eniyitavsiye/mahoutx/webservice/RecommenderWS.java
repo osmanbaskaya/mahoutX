@@ -26,6 +26,8 @@ import org.apache.mahout.cf.taste.impl.recommender.svd.ALSWRFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.ExpectationMaximizationSVDFactorizer;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
 import org.apache.mahout.cf.taste.impl.recommender.svd.Factorizer;
+import org.apache.mahout.cf.taste.impl.similarity.CachingItemSimilarity;
+import org.apache.mahout.cf.taste.impl.similarity.CachingUserSimilarity;
 import org.apache.mahout.cf.taste.impl.similarity.UncenteredCosineSimilarity;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.neighborhood.UserNeighborhood;
@@ -120,6 +122,7 @@ public class RecommenderWS {
             RecommenderBuilder builder = builders.get(context);
             RecommenderEvaluator evaluator = new AverageAbsoluteDifferenceRecommenderEvaluator();
             double score = evaluator.evaluate(builder, null, dataModels.get(context), trainingPercent, evalPercent);
+            log.log(Level.INFO, "MAE is {0}.", score);
             return "" + score;
         } catch (Exception ex) {
             log.log(Level.SEVERE, null, ex);
@@ -173,6 +176,7 @@ public class RecommenderWS {
             @WebParam(name = "context") String context,
             @WebParam(name = "isBasedOnItems") final boolean isBasedOnItems,
             @WebParam(name = "similarityType") final String similarityType,
+            @WebParam(name = "shouldCacheSimilarities") final boolean shouldCacheSimilarities,
             @WebParam(name = "similarityThreshold") final Double similarityThreshold,
             @WebParam(name = "nMostSimilarUsers") final Integer nMostSimilarUsers,
             @WebParam(name = "neighborhoodType") final String neighborhoodType) {
@@ -194,21 +198,29 @@ public class RecommenderWS {
                     similarity = new UncenteredCosineSimilarity(model);
                 }
                 if (isBasedOnItems) {
-                    return new GenericItemBasedRecommender(model, (ItemSimilarity) similarity);
+                    ItemSimilarity sim =
+                            shouldCacheSimilarities
+                                    ? new CachingItemSimilarity((ItemSimilarity) similarity, model)
+                                    : (ItemSimilarity) similarity;
+                    return new GenericItemBasedRecommender(model, sim);
                 } else {
                     UserNeighborhood neighborhood;
-                    UserSimilarity userSimilarity = (UserSimilarity) similarity;
+                    UserSimilarity sim =
+                            shouldCacheSimilarities
+                                    ? new CachingUserSimilarity((UserSimilarity) similarity, model)
+                                    : (UserSimilarity) similarity;
                     switch (neighborhoodType) {
                         case "NearestNUserNeighborhood":
-                            neighborhood = new NearestNUserNeighborhood(nMostSimilarUsers, similarityThreshold, userSimilarity, model);
+                            neighborhood = new NearestNUserNeighborhood(
+                                    nMostSimilarUsers, similarityThreshold, sim, model);
                             break;
                         default:
                             log.log(Level.WARNING, "Not a known UserNeighborhood class name: {0}.\n" +
                                     "Using ThresholdUserNeighborhood.", neighborhoodType);
                         case "ThresholdUserNeighborhood":
-                            neighborhood = new ThresholdUserNeighborhood(similarityThreshold, userSimilarity, model);
+                            neighborhood = new ThresholdUserNeighborhood(similarityThreshold, sim, model);
                     }
-                    return new GenericUserBasedRecommender(model, neighborhood, userSimilarity);
+                    return new GenericUserBasedRecommender(model, neighborhood, sim);
                 }
             }
         };
