@@ -150,10 +150,13 @@ public class RecommenderWS {
         RecommenderBuilder builder = builders.get(context);
 
         try {
-            OnlineSVDRecommender osv = (OnlineSVDRecommender) builder.buildRecommender(model);
+            Recommender osv = builder.buildRecommender(model);
 
             predictor.put(context, osv);
-            factorizationCaches.put(context, osv.getFactorizationCachingFactorizer());
+            if (osv instanceof OnlineSVDRecommender) {
+                factorizationCaches.put(context,
+                        ((OnlineSVDRecommender) osv).getFactorizationCachingFactorizer());
+            }
             contextStates.put(context, ContextState.READY);
             onlineMaeHistories.put(context, new ArrayList<Float>());
             return "done";
@@ -180,7 +183,7 @@ public class RecommenderWS {
                 Object similarity;
                 try {
                     similarity =
-                            Class.forName("org.apache.mahout.cf.taste.impl.similarity" + similarityType)
+                            Class.forName("org.apache.mahout.cf.taste.impl.similarity." + similarityType)
                                  .getConstructor(DataModel.class)
                                  .newInstance(model);
                 } catch (Exception e) {
