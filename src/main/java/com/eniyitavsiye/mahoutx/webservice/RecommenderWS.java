@@ -15,6 +15,7 @@ import org.apache.mahout.cf.taste.eval.RecommenderEvaluator;
 import org.apache.mahout.cf.taste.example.kddcup.track1.svd.ParallelArraysSGDFactorizer;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
 import org.apache.mahout.cf.taste.impl.eval.AverageAbsoluteDifferenceRecommenderEvaluator;
+import org.apache.mahout.cf.taste.impl.model.file.FileDataModel;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ConnectionPoolDataSource;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
 import org.apache.mahout.cf.taste.impl.neighborhood.NearestNUserNeighborhood;
@@ -42,6 +43,7 @@ import org.apache.mahout.common.distance.CosineDistanceMeasure;
 import javax.jws.WebMethod;
 import javax.jws.WebParam;
 import javax.jws.WebService;
+import java.io.File;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.logging.Level;
@@ -109,8 +111,8 @@ public class RecommenderWS {
         //TODO maybe later check if no configuration exists, or no datamodel available, handle exceptions and so on...
 
         KorenIRStatsEvaluator kirse = new KorenIRStatsEvaluator(trainingPercent, nUnratedItems);
-        return kirse.evaluate(builders.get(context), null, dataModels.get(context), null, listSize, relevanceThreshold,
-                evalPercent).getRecall() + "";
+        return kirse.evaluate(builders.get(context), null, dataModels.get(context), null,
+                listSize, relevanceThreshold, evalPercent).getRecall() + "";
     }
 
     @WebMethod(operationName = "evaluateRecommenderMae")
@@ -603,7 +605,44 @@ public class RecommenderWS {
         return state == null ? ContextState.UNKNOWN : state;
     }
 
+    @WebMethod(operationName = "getPreferrenceForItem")
+    public String getPreferrenceForItem(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "itemId") long itemId) throws TasteException {
+        return String.valueOf(dataModels.get(context).getPreferencesForItem(itemId));
+    }
+
+    @WebMethod(operationName = "getPreferrenceFromUser")
+    public String getPreferrenceFromUser(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "userId") long userId) throws TasteException {
+        return String.valueOf(dataModels.get(context).getPreferencesFromUser(userId));
+    }
+
+    @WebMethod(operationName = "getSimilarityBetweenItems")
+    public double getSimilarityBetweenItems(
+            @WebParam(name = "context") String context,
+            @WebParam(name = "itemId1") long itemId1,
+            @WebParam(name = "itemId2") long itemId2) throws TasteException {
+        ItemSimilarity sim = ((GenericItemBasedRecommender) predictor.get(context)).getSimilarity();
+        return sim.itemSimilarity(itemId1, itemId2);
+    }
+
     public static void main(String[] args) throws Exception {
+        DataModel model = new FileDataModel(new File("/home/ceyhun/Dropbox/Projects/doctoral/dataset/MovieLens/100k/ratings.dat"));
+        final String context = "movie";
+        dataModels.put(context, model);
+        contextStates.put(context, ContextState.FETCHED);
+
+
+        RecommenderWS w = new RecommenderWS();
+
+
+
+        while (true) {
+            System.out.println("REPL!");
+        }
+
     /*
 
      DataModel reloadModel =
