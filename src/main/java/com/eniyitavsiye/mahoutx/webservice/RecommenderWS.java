@@ -177,6 +177,7 @@ public class RecommenderWS {
             @WebParam(name = "isBasedOnItems") final boolean isBasedOnItems,
             @WebParam(name = "similarityType") final String similarityType,
             @WebParam(name = "shouldCacheSimilarities") final boolean shouldCacheSimilarities,
+            @WebParam(name = "candidateItemStrategy") final String candidateItemStrategy,
             @WebParam(name = "similarityThreshold") final Double similarityThreshold,
             @WebParam(name = "nMostSimilarUsers") final Integer nMostSimilarUsers,
             @WebParam(name = "neighborhoodType") final String neighborhoodType) {
@@ -202,7 +203,22 @@ public class RecommenderWS {
                             shouldCacheSimilarities
                                     ? new CachingItemSimilarity((ItemSimilarity) similarity, model)
                                     : (ItemSimilarity) similarity;
-                    return new GenericItemBasedRecommender(model, sim);
+                    String cs = candidateItemStrategy;
+                    if (cs == null) {
+                        cs = "AllUnknownItemsCandidateItemsStrategy";
+                    }
+                    CandidateItemsStrategy strategy;
+                    try {
+                        strategy = (CandidateItemsStrategy)
+                                Class.forName("org.apache.mahout.cf.taste.impl.recommender." + cs)
+                                        .newInstance();
+                    } catch (Exception e) {
+                        log.log(Level.WARNING, "Could not instantiate strategy: {0}. Using default AllUnkownItemsCandidateItemsStrategy", candidateItemStrategy);
+                        log.log(Level.WARNING, null, e);
+                        strategy = new AllUnknownItemsCandidateItemsStrategy();
+                    }
+                    return new GenericItemBasedRecommender(model, sim, strategy,
+                            (MostSimilarItemsCandidateItemsStrategy) strategy);
                 } else {
                     UserNeighborhood neighborhood;
                     UserSimilarity sim =
@@ -315,6 +331,16 @@ public class RecommenderWS {
             } else {
                 recommendations = predictor.get(context).recommend(userId, offset + length);
             }
+            long[] candidateItemIds = new AllUnknownItemsCandidateItemsStrategy().getCandidateItems(userId, dataModels.get(context).getPreferencesFromUser(userId), dataModels.get(context)).toArray();
+            String[] result = new String[candidateItemIds.length];
+            for (int i = 0; i < result.length; ++i) {
+                long itemId = candidateItemIds[i];
+                result[i] = String.format("%d: uid:%d, iid:%d, prediction:%f\n", (i+1), userId, itemId, estimatePreference(context, userId, itemId));
+            }
+
+            log.log(Level.FINE, "Predictions:\n{0}\n\n\n\n", Arrays.toString(result));
+
+            log.log(Level.FINE, "Recommendation list: {0}", recommendations);
 
             String[] list = new String[Math.min(length, recommendations.size())];
             for (int i = offset; i < Math.min(list.length + offset, recommendations.size()); i++) {
