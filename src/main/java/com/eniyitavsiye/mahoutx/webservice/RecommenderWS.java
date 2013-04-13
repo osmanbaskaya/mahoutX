@@ -488,6 +488,10 @@ public class RecommenderWS {
             @WebParam(name = "context") String context,
             @WebParam(name = "userId") final long userId) {
 
+			return new String[0];
+			/*
+
+
         FactorizationCachingFactorizer cachingFactorizer = factorizationCaches.get(context);
         final Factorization factorization = cachingFactorizer.getCachedFactorization();
 
@@ -539,6 +543,8 @@ public class RecommenderWS {
             topWithSim[i] = id + ";" + comparison.similarity(id, userId);
         }
         return topWithSim;
+* 
+			 */
     }
 
     @WebMethod(operationName = "hasUserRatings")
