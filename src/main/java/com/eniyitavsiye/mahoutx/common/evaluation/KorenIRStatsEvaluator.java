@@ -18,16 +18,29 @@ import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.apache.mahout.cf.taste.recommender.CandidateItemsStrategy;
 import org.apache.mahout.cf.taste.recommender.IDRescorer;
 import org.apache.mahout.cf.taste.recommender.Recommender;
+
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
 
+    private static final Logger log = Logger.getLogger(KorenIRStatsEvaluator.class.getName());
     private static final CandidateItemsStrategy strategy = new AllUnknownItemsCandidateItemsStrategy();
 
     private Random random = new Random();
     private double trainingPercentage;
     private int nUnratedItems;
 
+    private float percentIncrement = 0.05f;
+
+    public void setPercentIncrement(float percentIncrement) {
+        if (percentIncrement > 1 || percentIncrement < 0) {
+            throw new IllegalArgumentException("percentIncrement should be in [0,1]: " +
+                    percentIncrement);
+        }
+        this.percentIncrement = percentIncrement;
+    }
 
     public KorenIRStatsEvaluator(double trainingPercentage, int nUnratedItems) {
         this.trainingPercentage = trainingPercentage;
@@ -52,6 +65,7 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
                 1 + (int) (evaluationPercentage * numUsers));
 
 
+        log.log(Level.INFO,  "Starting to divide users into training and test...");
 
         LongPrimitiveIterator it = dataModel.getUserIDs();
         while (it.hasNext()) {
@@ -60,9 +74,14 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
                 splitOneUsersPrefs(trainingPercentage, trainingPrefs, testPrefs, userID, dataModel);
             }
         }
+        log.log(Level.INFO,  "Training size: {0}, Test size: {1}.",
+                new Object[] {trainingPrefs.size(), testPrefs.size()});
 
         DataModel trainingDataModel = new GenericDataModel(trainingPrefs);
+
+        log.log(Level.INFO, "Building model...");
         final Recommender recommender = recommenderBuilder.buildRecommender(trainingDataModel);
+        log.log(Level.INFO, "Model build complete, finding relevant items...");
 
         List<Preference> relevantPreferences = new ArrayList<>();
 
@@ -78,8 +97,13 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
             }
         }
 
+        int nRelevantPrefs = relevantPreferences.size();
+        log.log(Level.INFO, "#relevant preferences: {0}.", nRelevantPrefs);
+
         final RunningAverage recall = new FullRunningAverage();
 
+        float nextPercent = 0;
+        int i = 0;
         for (Preference pref : relevantPreferences) {
             final long userID = pref.getUserID();
 
@@ -119,7 +143,15 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
 
             int hit = topN.retrieve().contains(pref.getItemID()) ? 1 : 0;
             recall.addDatum(hit);
+
+            float currentPercent = (float) i / nRelevantPrefs;
+            if (currentPercent > nextPercent) {
+                nextPercent += percentIncrement;
+                log.log(Level.INFO, "Current pref : {0}/{1} (%{2}).", new Object[] { i, nRelevantPrefs, currentPercent * 100 });
+            }
+
         }
+        log.log(Level.INFO, "Recall evaluation is complete, recall: {0}.", recall.getAverage());
 
         return new IRStatistics() {
             @Override
