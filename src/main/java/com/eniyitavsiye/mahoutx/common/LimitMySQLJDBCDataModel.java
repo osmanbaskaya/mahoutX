@@ -24,7 +24,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
-import java.util.Map;
 
 public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
@@ -59,7 +58,6 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 		Statement stmt = null;
 		ResultSet rs = null;
 
-		FastByIDMap<PreferenceArray> result = new FastByIDMap<>();
 
 		try {
 			conn = dataSource.getConnection();
@@ -70,6 +68,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
 			String query;
 
+            log.info("before 500000 allocation: {}.", printFreeMemory());
 			FastByIDMap<List<Preference>> currentPrefs = new FastByIDMap<>(500000);
 			do {
 				counter = 0;
@@ -78,7 +77,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
 				log.info("Executing SQL query (offset = {}) : {}", offset, query);
 				rs = stmt.executeQuery(query);
-				log.info("query executed");
+				log.info("query executed. Current state of memory: {}", printFreeMemory());
 				while (rs.next()) {
 					counter++;
 					long nextUserID = getLongColumn(rs, 1);
@@ -95,10 +94,14 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 				offset += limit;
 			} while (counter != 0);
 
-			for (Map.Entry<Long, List<Preference>> entry : currentPrefs.entrySet()) {
-				PreferenceArray array = new GenericUserPreferenceArray(entry.getValue());
-				result.put(entry.getKey(), array);
-			}
+            FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500000);
+
+            for (int count = currentPrefs.size(); count >= 0; --count) {
+                long id = currentPrefs.keySetIterator().next();
+                List<Preference> preferences = currentPrefs.get(id);
+                currentPrefs.remove(id);
+                result.put(id, new GenericUserPreferenceArray(preferences));
+            }
 
 			return result;
 
