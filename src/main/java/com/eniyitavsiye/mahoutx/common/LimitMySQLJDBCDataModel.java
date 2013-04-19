@@ -17,6 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -107,4 +109,23 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 			IOUtils.quietClose(rs, stmt, conn);
 		}
 	}
+
+    private String printFreeMemory() {
+        String whole = "\nFree heap: " + Runtime.getRuntime().freeMemory() + "\n";
+        try {
+            Process p = Runtime.getRuntime().exec("free -m");
+
+            BufferedReader reader =
+                    new BufferedReader(new InputStreamReader(p.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                whole += line + "\n";
+            }
+        } catch (Exception e) {
+            whole += "Some exception occurred.\n";
+        }
+
+        return whole;
+    }
+
 }
