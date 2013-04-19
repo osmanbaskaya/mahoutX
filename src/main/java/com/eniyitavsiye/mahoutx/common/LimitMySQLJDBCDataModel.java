@@ -88,7 +88,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 						currentPrefs.put(nextUserID, prefs);
 					}
 					prefs.add(buildPreference(rs));
-					log.info("counter: {}, nextUserID: {}, nItems: {}.", new Object[] { counter, nextUserID, prefs.size() });
+					//log.info("counter: {}, nextUserID: {}, nItems: {}.", new Object[] { counter, nextUserID, prefs.size() });
 				}
 				offset += limit;
 			} while (counter != 0);
