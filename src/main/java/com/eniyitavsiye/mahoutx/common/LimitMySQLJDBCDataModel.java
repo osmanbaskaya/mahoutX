@@ -64,44 +64,50 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 			stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
 			stmt.setFetchDirection(ResultSet.FETCH_FORWARD);
 			stmt.setFetchSize(getFetchSize());
-			int offset = 0, limit = 400000, counter = 0;
+			int offset = 0, counter = 0;
 
 			String query;
 
+            int maxUserID = getMaxUserID(conn);
+            int limit = maxUserID / 500;
+
             log.info("before 500000 allocation: {}.", printFreeMemory());
-			FastByIDMap<List<Preference>> currentPrefs = new FastByIDMap<>(500000);
+            FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500000);
+            List<Preference> prefs = null;
+            long currentUserID = -1;
+
+            int userCount = 0;
+
 			do {
-				counter = 0;
-				query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn + " FROM " + preferenceTable
-								+ " WHERE id > " + offset + " AND id <= " + (offset + limit) + " ORDER BY " + userIDColumn + ", " + itemIDColumn;
+				query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn +
+                        " FROM " + preferenceTable +
+                        " WHERE " + userIDColumn + " > " + offset + " AND " + userIDColumn + "  <= " + (offset + limit) +
+                        " ORDER BY " + userIDColumn + ", " + itemIDColumn;
 
 				log.info("Executing SQL query (offset = {}) : {}", offset, query);
 				rs = stmt.executeQuery(query);
 				log.info("query executed. Current state of memory: {}", printFreeMemory());
+                int blockUserCount = 0;
+                counter = 0;
 				while (rs.next()) {
 					counter++;
 					long nextUserID = getLongColumn(rs, 1);
-					List<Preference> prefs;
-					if (currentPrefs.containsKey(nextUserID)) {
- 						prefs = currentPrefs.get(nextUserID);
-					} else {
-						prefs = Lists.newArrayList();
-						currentPrefs.put(nextUserID, prefs);
-					}
+                    if (nextUserID != currentUserID) {
+                        ++blockUserCount;
+                        if (prefs != null) {
+                            result.put(currentUserID, new GenericUserPreferenceArray(prefs));
+                        }
+                        prefs = Lists.newArrayList();
+                        currentUserID = nextUserID;
+                    }
 					prefs.add(buildPreference(rs));
 					//log.info("counter: {}, nextUserID: {}, nItems: {}.", new Object[] { counter, nextUserID, prefs.size() });
 				}
+                userCount += blockUserCount;
+                log.info("totalUserCount = {}, blockUserCount = {}, blockRatingCount = {}.",
+                        new Object[] { userCount, blockUserCount, counter} );
 				offset += limit;
 			} while (counter != 0);
-
-            FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500000);
-
-            for (int count = currentPrefs.size(); count >= 0; --count) {
-                long id = currentPrefs.keySetIterator().next();
-                List<Preference> preferences = currentPrefs.get(id);
-                currentPrefs.remove(id);
-                result.put(id, new GenericUserPreferenceArray(preferences));
-            }
 
 			return result;
 
@@ -112,6 +118,14 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 			IOUtils.quietClose(rs, stmt, conn);
 		}
 	}
+
+    private int getMaxUserID(Connection conn) throws SQLException {
+        Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+        stmt.execute("SELECT MAX(" + userIDColumn + ") FROM " + preferenceTable);
+        ResultSet rs = stmt.getResultSet();
+        rs.next();
+        return rs.getInt(1);
+    }
 
     private String printFreeMemory() {
         String whole = "\nFree heap: " + Runtime.getRuntime().freeMemory() + "\n";
