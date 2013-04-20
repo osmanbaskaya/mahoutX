@@ -4,7 +4,6 @@
  */
 package com.eniyitavsiye.mahoutx.common;
 
-
 import com.google.common.collect.Lists;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.FastByIDMap;
@@ -28,7 +27,6 @@ import java.util.List;
 public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
 	private static final long serialVersionUID = -2895240379301248474L;
-
 	private static final Logger log = LoggerFactory.getLogger(LimitMySQLJDBCDataModel.class);
 	private final DataSource dataSource;
 	private String userIDColumn;
@@ -68,44 +66,44 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
 			String query;
 
-            int maxUserID = getMaxUserID(conn);
-            int limit = maxUserID / 500;
+			int maxUserID = getMaxUserID(conn);
+			int limit = maxUserID / 10000;
 
-            log.info("before 500000 allocation: {}.", printFreeMemory());
-            FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500000);
-            List<Preference> prefs = null;
-            long currentUserID = -1;
+			log.info("before 500000 allocation: {}.", printFreeMemory());
+			FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500000);
+			List<Preference> prefs = null;
+			long currentUserID = -1;
 
-            int userCount = 0;
+			int userCount = 0;
 
 			do {
-				query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn +
-                        " FROM " + preferenceTable +
-                        " WHERE " + userIDColumn + " > " + offset + " AND " + userIDColumn + "  <= " + (offset + limit) +
-                        " ORDER BY " + userIDColumn + ", " + itemIDColumn;
+				query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn
+								+ " FROM " + preferenceTable
+								+ " WHERE " + userIDColumn + " > " + offset + " AND " + userIDColumn + "  <= " + (offset + limit)
+								+ " ORDER BY " + userIDColumn + ", " + itemIDColumn;
 
 				log.info("Executing SQL query (offset = {}) : {}", offset, query);
 				rs = stmt.executeQuery(query);
 				log.info("query executed. Current state of memory: {}", printFreeMemory());
-                int blockUserCount = 0;
-                counter = 0;
+				int blockUserCount = 0;
+				counter = 0;
 				while (rs.next()) {
 					counter++;
 					long nextUserID = getLongColumn(rs, 1);
-                    if (nextUserID != currentUserID) {
-                        ++blockUserCount;
-                        if (prefs != null) {
-                            result.put(currentUserID, new GenericUserPreferenceArray(prefs));
-                        }
-                        prefs = Lists.newArrayList();
-                        currentUserID = nextUserID;
-                    }
+					if (nextUserID != currentUserID) {
+						++blockUserCount;
+						if (prefs != null) {
+							result.put(currentUserID, new GenericUserPreferenceArray(prefs));
+						}
+						prefs = Lists.newArrayList();
+						currentUserID = nextUserID;
+					}
 					prefs.add(buildPreference(rs));
 					//log.info("counter: {}, nextUserID: {}, nItems: {}.", new Object[] { counter, nextUserID, prefs.size() });
 				}
-                userCount += blockUserCount;
-                log.info("totalUserCount = {}, blockUserCount = {}, blockRatingCount = {}.",
-                        new Object[] { userCount, blockUserCount, counter} );
+				userCount += blockUserCount;
+				log.info("totalUserCount = {}, blockUserCount = {}, blockRatingCount = {}.",
+								new Object[]{userCount, blockUserCount, counter});
 				offset += limit;
 			} while (counter != 0);
 
@@ -119,30 +117,29 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 		}
 	}
 
-    private int getMaxUserID(Connection conn) throws SQLException {
-        Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-        stmt.execute("SELECT MAX(" + userIDColumn + ") FROM " + preferenceTable);
-        ResultSet rs = stmt.getResultSet();
-        rs.next();
-        return rs.getInt(1);
-    }
+	private int getMaxUserID(Connection conn) throws SQLException {
+		Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+		stmt.execute("SELECT MAX(" + userIDColumn + ") FROM " + preferenceTable);
+		ResultSet rs = stmt.getResultSet();
+		rs.next();
+		return rs.getInt(1);
+	}
 
-    private String printFreeMemory() {
-        String whole = "\nFree heap: " + Runtime.getRuntime().freeMemory() + "\n";
-        try {
-            Process p = Runtime.getRuntime().exec("free -m");
+	private String printFreeMemory() {
+		String whole = "\nFree heap: " + Runtime.getRuntime().freeMemory() + "\n";
+		try {
+			Process p = Runtime.getRuntime().exec("free -m");
 
-            BufferedReader reader =
-                    new BufferedReader(new InputStreamReader(p.getInputStream()));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                whole += line + "\n";
-            }
-        } catch (Exception e) {
-            whole += "Some exception occurred.\n";
-        }
+			BufferedReader reader =
+							new BufferedReader(new InputStreamReader(p.getInputStream()));
+			String line;
+			while ((line = reader.readLine()) != null) {
+				whole += line + "\n";
+			}
+		} catch (Exception e) {
+			whole += "Some exception occurred.\n";
+		}
 
-        return whole;
-    }
-
+		return whole;
+	}
 }
