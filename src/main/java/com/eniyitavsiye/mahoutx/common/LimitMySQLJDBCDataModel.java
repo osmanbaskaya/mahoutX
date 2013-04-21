@@ -23,6 +23,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import org.apache.mahout.cf.taste.impl.common.FullRunningAverage;
 
 public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
@@ -66,9 +67,9 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
 			String query;
 
-			String rangeColumn = "id";
+			String rangeColumn = "user_id";
 //			int maxUserID = getMaxUserID(conn);
-			int limit = 400_000;//maxUserID / 10000;
+			int limit = 5000;//maxUserID / 10000;
 
 			log.info("before 500000 allocation: {}.", printFreeMemory());
 			FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500000);
@@ -76,6 +77,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 			long currentUserID = -1;
 
 			int userCount = 0;
+			FullRunningAverage avg = new FullRunningAverage();
 
 			do {
 				query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn
@@ -89,6 +91,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 				log.info("query executed. Current state of memory: {}", printFreeMemory());
 				int blockUserCount = 0;
 				counter = 0;
+				long blockStart = System.nanoTime();
 				while (rs.next()) {
 					counter++;
 					long nextUserID = getLongColumn(rs, 1);
@@ -103,9 +106,11 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 					prefs.add(buildPreference(rs));
 					//log.info("counter: {}, nextUserID: {}, nItems: {}.", new Object[] { counter, nextUserID, prefs.size() });
 				}
+				double timePassed = (System.nanoTime() - blockStart) / Math.pow(10, 9);
+				avg.addDatum(timePassed);
 				userCount += blockUserCount;
-				log.info("totalUserCount = {}, blockUserCount = {}, blockRatingCount = {}.",
-								new Object[]{userCount, blockUserCount, counter});
+				log.info("totalUserCount = {}, blockUserCount = {}, blockRatingCount = {}, in {} (avg={}) seconds.",
+								new Object[]{userCount, blockUserCount, counter, timePassed, avg.getAverage()});
 				offset += limit;
 			} while (counter != 0);
 
