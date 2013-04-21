@@ -84,7 +84,8 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
 				log.info("Executing SQL query (offset = {}) : {}", offset, query);
 				rs = stmt.executeQuery(query);
-				log.info("query executed. Current state of memory: {}", printFreeMemory());
+				log.info("query executed");
+				//log.info("query executed. Current state of memory: {}", printFreeMemory());
 				int blockUserCount = 0;
 				counter = 0;
 				while (rs.next()) {
