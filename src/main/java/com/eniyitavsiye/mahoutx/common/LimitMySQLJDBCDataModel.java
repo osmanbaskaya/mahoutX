@@ -68,7 +68,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
 			String rangeColumn = "user_id";
 //			int maxUserID = getMaxUserID(conn);
-			int limit = 5000;//maxUserID / 10000;
+			int limit = 500;//maxUserID / 10000;
 
 			log.info("before 500000 allocation: {}.", printFreeMemory());
 			FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500_000);
@@ -90,6 +90,8 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 				int blockUserCount = 0;
 				counter = 0;
 				long blockStart = System.nanoTime();
+        FullRunningAverage avgPerLine = new FullRunningAverage();
+        long lineStart = System.nanoTime();
 				while (rs.next()) {
 					counter++;
 					long nextUserID = getLongColumn(rs, 1);
@@ -103,12 +105,13 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 					}
 					prefs.add(buildPreference(rs));
 					//log.info("counter: {}, nextUserID: {}, nItems: {}.", new Object[] { counter, nextUserID, prefs.size() });
+          avgPerLine.addDatum((System.nanoTime() - lineStart) / Math.pow(10, 6));
 				}
 				double timePassed = (System.nanoTime() - blockStart) / Math.pow(10, 9);
 				avg.addDatum(timePassed);
 				userCount += blockUserCount;
-				log.info("totalUserCount = {}, blockUserCount = {}, blockRatingCount = {}, in {} (avg={}) seconds.",
-								new Object[]{userCount, blockUserCount, counter, timePassed, avg.getAverage()});
+				log.info("userCount = {}, bUserCount = {}, bRatCount = {}, in {} (avg={}) secs with {} ms per rating.",
+								new Object[]{userCount, blockUserCount, counter, timePassed, avg.getAverage(), avgPerLine.getAverage()});
 				offset += limit;
 			} while (counter != 0);
 
