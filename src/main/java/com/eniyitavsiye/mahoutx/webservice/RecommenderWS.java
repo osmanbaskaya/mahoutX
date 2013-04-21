@@ -105,7 +105,7 @@ public class RecommenderWS {
 					@WebParam(name = "listSize") final int listSize,
 					@WebParam(name = "trainingPercent") final double trainingPercent,
 					@WebParam(name = "relevanceThreshold") final double relevanceThreshold,
-					@WebParam(name = "evalPercent") final double evalPercent) 
+					@WebParam(name = "evalPercent") final double evalPercent)
 						throws TasteException {
 		//TODO maybe later check if no configuration exists, or no datamodel available, handle exceptions and so on...
 
@@ -132,9 +132,17 @@ public class RecommenderWS {
 		}
 	}
 
+	private static String asdf = "initial";
+
 	@WebMethod(operationName = "buildModel")
 	public String buildModel(
 					@WebParam(name = "context") String context) {
+		boolean b = true;
+		if (b) {
+			String old = asdf;
+			asdf = context + old;
+			return old + "x x x";
+		}
 		/*
 		 if (!(model.getDelegate() instanceof ReloadFromJDBCDataModel)) {
 		 String message = String.format(
@@ -193,9 +201,9 @@ public class RecommenderWS {
 									Class.forName("org.apache.mahout.cf.taste.impl.similarity." + similarityType)
 									.getConstructor(DataModel.class)
 									.newInstance(model);
-				} catch (ClassNotFoundException | NoSuchMethodException 
-							| SecurityException 			| InstantiationException 
-							| IllegalAccessException 	| IllegalArgumentException 
+				} catch (ClassNotFoundException | NoSuchMethodException
+							| SecurityException 			| InstantiationException
+							| IllegalAccessException 	| IllegalArgumentException
 							| InvocationTargetException e) {
 					log.log(Level.WARNING, "Could not find class or constructor for class: {0}\n"
 									+ "Caused by: {1}.\n"
@@ -214,13 +222,13 @@ public class RecommenderWS {
 					}
 					CandidateItemsStrategy strategy;
 					try {
-						strategy = (CandidateItemsStrategy) 
+						strategy = (CandidateItemsStrategy)
 										Class.forName("org.apache.mahout.cf.taste.impl.recommender." + cs)
 										.newInstance();
-					} catch (ClassNotFoundException | InstantiationException 
+					} catch (ClassNotFoundException | InstantiationException
 							 	| IllegalAccessException e) {
 						log.log(Level.WARNING, "Could not instantiate strategy: {0}. "
-										+ "Using default AllUnkownItemsCandidateItemsStrategy", 
+										+ "Using default AllUnkownItemsCandidateItemsStrategy",
 										candidateItemStrategy);
 						log.log(Level.WARNING, null, e);
 						strategy = new AllUnknownItemsCandidateItemsStrategy();
@@ -291,13 +299,13 @@ public class RecommenderWS {
 				}
 				CandidateItemsStrategy strategy;
 				try {
-					strategy = (CandidateItemsStrategy) 
+					strategy = (CandidateItemsStrategy)
 									Class.forName("org.apache.mahout.cf.taste.impl.recommender." + cs)
 									.newInstance();
-				} catch (ClassNotFoundException | InstantiationException 
+				} catch (ClassNotFoundException | InstantiationException
 							| IllegalAccessException e) {
 					log.log(Level.WARNING, "Could not instantiate strategy: {0}. "
-									+ "Using default AllUnkownItemsCandidateItemsStrategy", 
+									+ "Using default AllUnkownItemsCandidateItemsStrategy",
 									candidateItemStrategy);
 					log.log(Level.WARNING, null, e);
 					strategy = new AllUnknownItemsCandidateItemsStrategy();
@@ -342,17 +350,17 @@ public class RecommenderWS {
 			} else {
 				recommendations = predictor.get(context).recommend(userId, offset + length);
 			}
-			long[] candidateItemIds = 
+			long[] candidateItemIds =
 							new AllUnknownItemsCandidateItemsStrategy()
-								.getCandidateItems(userId, 
-										dataModels.get(context).getPreferencesFromUser(userId), 
+								.getCandidateItems(userId,
+										dataModels.get(context).getPreferencesFromUser(userId),
 										dataModels.get(context)
 								).toArray();
 			String[] result = new String[candidateItemIds.length];
 			for (int i = 0; i < result.length; ++i) {
 				long itemId = candidateItemIds[i];
-				result[i] = String.format("%d: uid:%d, iid:%d, prediction:%f\n", 
-								(i + 1), userId, itemId, 
+				result[i] = String.format("%d: uid:%d, iid:%d, prediction:%f\n",
+								(i + 1), userId, itemId,
 								estimatePreference(context, userId, itemId));
 			}
 
@@ -558,7 +566,7 @@ public class RecommenderWS {
 		 topWithSim[i] = id + ";" + comparison.similarity(id, userId);
 		 }
 		 return topWithSim;
-		 * 
+		 *
 		 */
 	}
 
