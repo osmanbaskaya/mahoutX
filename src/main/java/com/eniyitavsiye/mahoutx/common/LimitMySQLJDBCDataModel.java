@@ -115,10 +115,10 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 				avg.addDatum(timePassedBlock);
 				userCount += blockUserCount;
 
-				log.info("#users so far = {}, #block users = {}, #row = {}.",
+				log.info("\n#users so far = {}, #block users = {}, #row = {}.",
 								new Object[]{ userCount, blockUserCount, counter });
 
-				log.info("Block Time = {} (avg={}) secs with avg {} ms per row.",
+				log.info("\nBlock Time = {} (avg={}) secs with avg {} ms per row.",
 								new Object[]{ timePassedBlock, avg.getAverage(), avgPerLine.getAverage() });
 				
 				offset += limit;
