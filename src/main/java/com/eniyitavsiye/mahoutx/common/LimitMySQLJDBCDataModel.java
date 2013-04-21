@@ -66,8 +66,9 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
 			String query;
 
-			int maxUserID = getMaxUserID(conn);
-			int limit = maxUserID / 10000;
+			String rangeColumn = "id";
+//			int maxUserID = getMaxUserID(conn);
+			int limit = 400_000;//maxUserID / 10000;
 
 			log.info("before 500000 allocation: {}.", printFreeMemory());
 			FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500000);
@@ -79,13 +80,13 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 			do {
 				query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn
 								+ " FROM " + preferenceTable
-								+ " WHERE " + userIDColumn + " > " + offset + " AND " + userIDColumn + "  <= " + (offset + limit)
+								+ " WHERE " + rangeColumn + " > " + offset + " AND " + rangeColumn + "  <= " + (offset + limit)
 								+ " ORDER BY " + userIDColumn;
 
 				log.info("Executing SQL query (offset = {}) : {}", offset, query);
 				rs = stmt.executeQuery(query);
 				log.info("query executed");
-				//log.info("query executed. Current state of memory: {}", printFreeMemory());
+				log.info("query executed. Current state of memory: {}", printFreeMemory());
 				int blockUserCount = 0;
 				counter = 0;
 				while (rs.next()) {
