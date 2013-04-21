@@ -329,7 +329,7 @@ public class RecommenderWS {
 		try {
 			log.log(Level.INFO, "Entering getRecommendationList for user {0} in context {1}.",
 							new Object[]{userId, context});
-			List<RecommendedItem> recommendations = null;
+			List<RecommendedItem> recommendations;
 			if (!tagstring.equals("")) {
 				DBUtil dbUtil = new DBUtil();
 				Collection<Long> specificItemIDsList = dbUtil.getItems(context, tagstring.split(","));
