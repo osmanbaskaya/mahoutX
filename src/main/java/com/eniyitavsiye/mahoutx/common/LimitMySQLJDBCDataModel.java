@@ -50,7 +50,6 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
 	@Override
 	public FastByIDMap<PreferenceArray> exportWithPrefs() throws TasteException {
-		// TODO Auto-generated method stub
 		log.info("Exporting all data");
 
 		Connection conn = null;
@@ -72,9 +71,9 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 			int limit = 5000;//maxUserID / 10000;
 
 			log.info("before 500000 allocation: {}.", printFreeMemory());
-			FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500000);
-			List<Preference> prefs = null;
-			long currentUserID = -1;
+			FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500_000);
+			List<Preference> prefs = Lists.newArrayList();
+      long currentUserID = -1;
 
 			int userCount = 0;
 			FullRunningAverage avg = new FullRunningAverage();
@@ -87,8 +86,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
 				log.info("Executing SQL query (offset = {}) : {}", offset, query);
 				rs = stmt.executeQuery(query);
-				log.info("query executed");
-				log.info("query executed. Current state of memory: {}", printFreeMemory());
+				log.info("Query executed. Current state of memory: {}", printFreeMemory());
 				int blockUserCount = 0;
 				counter = 0;
 				long blockStart = System.nanoTime();
@@ -97,10 +95,10 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 					long nextUserID = getLongColumn(rs, 1);
 					if (nextUserID != currentUserID) {
 						++blockUserCount;
-						if (prefs != null) {
+						if (currentUserID != -1) {
 							result.put(currentUserID, new GenericUserPreferenceArray(prefs));
-						}
-						prefs = Lists.newArrayList();
+              prefs.clear();
+            }
 						currentUserID = nextUserID;
 					}
 					prefs.add(buildPreference(rs));
