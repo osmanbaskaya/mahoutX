@@ -106,6 +106,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 					prefs.add(buildPreference(rs));
 					//log.info("counter: {}, nextUserID: {}, nItems: {}.", new Object[] { counter, nextUserID, prefs.size() });
           avgPerLine.addDatum((System.nanoTime() - lineStart) / Math.pow(10, 6));
+          lineStart = System.nanoTime();
 				}
 				double timePassed = (System.nanoTime() - blockStart) / Math.pow(10, 9);
 				avg.addDatum(timePassed);
