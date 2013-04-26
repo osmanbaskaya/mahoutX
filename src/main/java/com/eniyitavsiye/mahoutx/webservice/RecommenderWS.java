@@ -132,17 +132,9 @@ public class RecommenderWS {
 		}
 	}
 
-	private static String asdf = "initial";
-
 	@WebMethod(operationName = "buildModel")
 	public String buildModel(
 					@WebParam(name = "context") String context) {
-		boolean b = true;
-		if (b) {
-			String old = asdf;
-			asdf = context + old;
-			return old + "x x x";
-		}
 		/*
 		 if (!(model.getDelegate() instanceof ReloadFromJDBCDataModel)) {
 		 String message = String.format(
