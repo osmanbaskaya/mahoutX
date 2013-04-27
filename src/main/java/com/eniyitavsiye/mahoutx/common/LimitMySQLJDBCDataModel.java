@@ -69,6 +69,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             String rangeColumn = "user_id";
 			int maxUserID = getMaxUserID(conn);
             int limit = maxUserID / 250;
+            double percentUse = 0.1;
 
             log.info("before 500000 allocation: {}.", printFreeMemory());
             FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500_000);
@@ -80,48 +81,50 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
             int totalRowCount = 0;
             do {
-                query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn
-                        + " FROM " + preferenceTable
-                        + " WHERE " + rangeColumn + " > " + offset + " AND " + rangeColumn + "  <= " + (offset + limit)
-                        + " ORDER BY " + userIDColumn;
+                if (Math.random() < percentUse) {
+                    query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn
+                            + " FROM " + preferenceTable
+                            + " WHERE " + rangeColumn + " > " + offset + " AND " + rangeColumn + "  <= " + (offset + limit)
+                            + " ORDER BY " + userIDColumn;
 
-                log.info("Executing SQL query (offset = {}) : \n{}", offset, query.substring(query.indexOf("WHERE")));
-                rs = stmt.executeQuery(query);
-                //log.info("Query executed. Current state of memory: {}", printFreeMemory());
-                int blockUserCount = 0;
-                counter = 0;
+                    log.info("Executing SQL query (offset = {}) : \n{}", offset, query.substring(query.indexOf("WHERE")));
+                    rs = stmt.executeQuery(query);
+                    //log.info("Query executed. Current state of memory: {}", printFreeMemory());
+                    int blockUserCount = 0;
+                    counter = 0;
 
-                long blockStart = System.nanoTime();
-                FullRunningAverage avgPerLine = new FullRunningAverage();
-                long lineStart = blockStart;
+                    long blockStart = System.nanoTime();
+                    FullRunningAverage avgPerLine = new FullRunningAverage();
+                    long lineStart = blockStart;
 
-                while (rs.next()) {
-                    counter++;
-                    long nextUserID = getLongColumn(rs, 1);
-                    if (nextUserID != currentUserID) {
-                        ++blockUserCount;
-                        if (currentUserID != -1) {
-                            result.put(currentUserID, new GenericUserPreferenceArray(prefs));
-                            prefs.clear();
+                    while (rs.next()) {
+                        counter++;
+                        long nextUserID = getLongColumn(rs, 1);
+                        if (nextUserID != currentUserID) {
+                            ++blockUserCount;
+                            if (currentUserID != -1) {
+                                result.put(currentUserID, new GenericUserPreferenceArray(prefs));
+                                prefs.clear();
+                            }
+                            currentUserID = nextUserID;
                         }
-                        currentUserID = nextUserID;
+                        prefs.add(buildPreference(rs));
+                        //log.info("counter: {}, nextUserID: {}, nItems: {}.", new Object[] { counter, nextUserID, prefs.size() });
+                        long temp = System.nanoTime();
+                        avgPerLine.addDatum((temp - lineStart) / Math.pow(10, 6));
+                        lineStart = temp;
                     }
-                    prefs.add(buildPreference(rs));
-                    //log.info("counter: {}, nextUserID: {}, nItems: {}.", new Object[] { counter, nextUserID, prefs.size() });
-                    long temp = System.nanoTime();
-                    avgPerLine.addDatum((temp - lineStart) / Math.pow(10, 6));
-                    lineStart = temp;
+                    double timePassedBlock = (System.nanoTime() - blockStart) / Math.pow(10, 9);
+                    avg.addDatum(timePassedBlock);
+                    userCount += blockUserCount;
+                    totalRowCount += counter;
+
+                    log.info("\n#users so far = {}, #block users = {},#total rows = {}, #block row = {}.",
+                            new Object[]{ userCount, blockUserCount, totalRowCount, counter });
+
+                    log.info("\nBlock Time = {} (avg={}) secs with avg {} ms per row.",
+                            new Object[]{ timePassedBlock, avg.getAverage(), avgPerLine.getAverage() });
                 }
-                double timePassedBlock = (System.nanoTime() - blockStart) / Math.pow(10, 9);
-                avg.addDatum(timePassedBlock);
-                userCount += blockUserCount;
-                totalRowCount += counter;
-
-                log.info("\n#users so far = {}, #block users = {},#total rows = {}, #block row = {}.",
-                        new Object[]{ userCount, blockUserCount, totalRowCount, counter });
-
-                log.info("\nBlock Time = {} (avg={}) secs with avg {} ms per row.",
-                        new Object[]{ timePassedBlock, avg.getAverage(), avgPerLine.getAverage() });
 
                 offset += limit;
             } while (counter != 0);
