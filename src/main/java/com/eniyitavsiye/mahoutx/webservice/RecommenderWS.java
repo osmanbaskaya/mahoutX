@@ -356,9 +356,9 @@ public class RecommenderWS {
 								estimatePreference(context, userId, itemId));
 			}
 
-			log.log(Level.FINE, "Predictions:\n{0}\n\n\n\n", Arrays.toString(result));
+			//log.log(Level.FINE, "Predictions:\n{0}\n\n\n\n", Arrays.toString(result));
 
-			log.log(Level.FINE, "Recommendation list: {0}", recommendations);
+			//log.log(Level.FINE, "Recommendation list: {0}", recommendations);
 
 			String[] list = new String[Math.min(length, recommendations.size())];
 			for (int i = offset; i < Math.min(list.length + offset, recommendations.size()); i++) {
