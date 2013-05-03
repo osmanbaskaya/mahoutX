@@ -275,8 +275,8 @@ public class KorenIRStatsWithFoldInEvaluator {
 
         if (oneUserTrainingWOFoldInPrefs != null
                 && oneUserFoldInPrefs != null
-                && testPrefs != null
-                && trainingWithFoldInPrefs != null) {
+                && oneUserTestPrefs != null
+                && oneUserTrainingWFoldInPrefs != null) {
             trainingWithoutFoldInPrefs.put(userID, new GenericUserPreferenceArray(oneUserTrainingWOFoldInPrefs));
             foldInPrefs.put(userID, new GenericUserPreferenceArray(oneUserFoldInPrefs));
             testPrefs.put(userID, new GenericUserPreferenceArray(oneUserTestPrefs));
