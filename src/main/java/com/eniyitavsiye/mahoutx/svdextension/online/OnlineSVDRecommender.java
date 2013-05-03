@@ -105,6 +105,19 @@ public class OnlineSVDRecommender extends AbstractRecommender {
         return userFeatures;
     }
 
+    public double[] updateUserWithFoldIn(long userID, PreferenceArray userPrefs) {
+        Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
+        double[] userFeatures = foldIn(userID, userPrefs);
+        try {
+            //user was available during build process
+            System.arraycopy(userFeatures, 0, factorization.getUserFeatures(userID), 0, featureCount);
+        } catch (NoSuchUserException e) {
+            //user is new.
+            newUserFeatures.put(userID, userFeatures);
+        }
+        return userFeatures;
+    }
+
     @Override
     public float estimatePreference(long userID, long itemID)
             throws TasteException {
@@ -113,14 +126,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
         // TODO maybe handle new users with no rating
         if (foldInNecessaryUsers.contains(userID)) {       // any user with changed ratings
             PreferenceArray userPrefs = tryToGetFreshPreferences(userID);
-            userFeatures = foldIn(userID, userPrefs);
-            try {
-                //user was available during build process
-                System.arraycopy(userFeatures, 0, factorization.getUserFeatures(userID), 0, featureCount);
-            } catch (NoSuchUserException e) {
-                //user is new.
-                newUserFeatures.put(userID, userFeatures);
-            }
+            userFeatures = updateUserWithFoldIn(userID, userPrefs);
         } else if (newUserFeatures.containsKey(userID)) {   // new user tries to estimate
             // preference without change in ratings
             userFeatures = newUserFeatures.get(userID);

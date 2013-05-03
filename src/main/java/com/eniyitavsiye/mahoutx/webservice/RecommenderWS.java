@@ -3,6 +3,7 @@ package com.eniyitavsiye.mahoutx.webservice;
 import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
 import com.eniyitavsiye.mahoutx.common.LimitMySQLJDBCDataModel;
 import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsEvaluator;
+import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsWithFoldInEvaluator;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import com.eniyitavsiye.mahoutx.svdextension.online.OnlineSVDRecommender;
@@ -105,13 +106,21 @@ public class RecommenderWS {
 					@WebParam(name = "listSize") final int listSize,
 					@WebParam(name = "trainingPercent") final double trainingPercent,
 					@WebParam(name = "relevanceThreshold") final double relevanceThreshold,
-					@WebParam(name = "evalPercent") final double evalPercent)
+					@WebParam(name = "evalPercent") final double evalPercent,
+                    @WebParam(name = "foldInUserPercentage") Double foldInUserPercentage)
 						throws TasteException {
 		//TODO maybe later check if no configuration exists, or no datamodel available, handle exceptions and so on...
 
-		KorenIRStatsEvaluator kirse = new KorenIRStatsEvaluator(trainingPercent, nUnratedItems);
-		return kirse.evaluate(builders.get(context), null, dataModels.get(context), null,
-						listSize, relevanceThreshold, evalPercent).getRecall() + "";
+        if (foldInUserPercentage != null) {
+            KorenIRStatsWithFoldInEvaluator kirse = new KorenIRStatsWithFoldInEvaluator(
+                    trainingPercent, foldInUserPercentage, nUnratedItems);
+            return kirse.evaluateFoldIn(builders.get(context), null, dataModels.get(context), null,
+                    listSize, relevanceThreshold, evalPercent);
+        } else {
+            KorenIRStatsEvaluator kirse = new KorenIRStatsEvaluator(trainingPercent, nUnratedItems);
+            return kirse.evaluate(builders.get(context), null, dataModels.get(context), null,
+                            listSize, relevanceThreshold, evalPercent).getRecall() + "";
+        }
 	}
 
 	@WebMethod(operationName = "evaluateRecommenderMae")
