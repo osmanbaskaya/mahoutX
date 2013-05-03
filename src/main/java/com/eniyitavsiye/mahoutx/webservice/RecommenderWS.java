@@ -111,16 +111,19 @@ public class RecommenderWS {
 						throws TasteException {
 		//TODO maybe later check if no configuration exists, or no datamodel available, handle exceptions and so on...
 
+        String result;
         if (foldInUserPercentage != null) {
             KorenIRStatsWithFoldInEvaluator kirse = new KorenIRStatsWithFoldInEvaluator(
                     trainingPercent, foldInUserPercentage, nUnratedItems);
-            return kirse.evaluateFoldIn(builders.get(context), null, dataModels.get(context), null,
+            result = kirse.evaluateFoldIn(builders.get(context), null, dataModels.get(context), null,
                     listSize, relevanceThreshold, evalPercent);
         } else {
             KorenIRStatsEvaluator kirse = new KorenIRStatsEvaluator(trainingPercent, nUnratedItems);
-            return kirse.evaluate(builders.get(context), null, dataModels.get(context), null,
+            result = kirse.evaluate(builders.get(context), null, dataModels.get(context), null,
                             listSize, relevanceThreshold, evalPercent).getRecall() + "";
         }
+        log.log(Level.INFO, "Recall result: {0}", result);
+        return result;
 	}
 
 	@WebMethod(operationName = "evaluateRecommenderMae")
