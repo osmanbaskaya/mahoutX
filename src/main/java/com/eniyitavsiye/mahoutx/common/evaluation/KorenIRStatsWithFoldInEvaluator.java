@@ -273,14 +273,18 @@ public class KorenIRStatsWithFoldInEvaluator {
         }
 
 
-        if (oneUserTrainingWOFoldInPrefs != null
-                && oneUserFoldInPrefs != null
-                && oneUserTestPrefs != null
-                && oneUserTrainingWFoldInPrefs != null) {
-            trainingWithoutFoldInPrefs.put(userID, new GenericUserPreferenceArray(oneUserTrainingWOFoldInPrefs));
+        if (foldInUser) {
+            if (oneUserTrainingWOFoldInPrefs == null || oneUserFoldInPrefs==null || oneUserTestPrefs==null) {
+                return;
+            }
+
             foldInPrefs.put(userID, new GenericUserPreferenceArray(oneUserFoldInPrefs));
+            trainingWithoutFoldInPrefs.put(userID, new GenericUserPreferenceArray(oneUserTrainingWOFoldInPrefs));
             testPrefs.put(userID, new GenericUserPreferenceArray(oneUserTestPrefs));
+        }
+        else {
             trainingWithFoldInPrefs.put(userID, new GenericUserPreferenceArray(oneUserTrainingWFoldInPrefs));
+            trainingWithoutFoldInPrefs.put(userID, new GenericUserPreferenceArray(oneUserTrainingWOFoldInPrefs));
         }
     }
 
