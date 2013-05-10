@@ -62,7 +62,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
             stmt.setFetchDirection(ResultSet.FETCH_FORWARD);
             stmt.setFetchSize(getFetchSize());
-            int offset = 0, counter = 0;
+            int offset = 0, counter = 1;
 
             String query;
 
@@ -79,9 +79,12 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             int userCount = 0;
             FullRunningAverage avg = new FullRunningAverage();
 
+            
             int totalRowCount = 0;
             do {
-                if (Math.random() < percentUse) {
+                //select * from, ,.... where userid in (select id as userid from auth_user);
+                
+                if (Math.random() < percentUse || (offset <= 6000 && 6000 <= offset + limit)) {
                     query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn
                             + " FROM " + preferenceTable
                             + " WHERE " + rangeColumn + " > " + offset + " AND " + rangeColumn + "  <= " + (offset + limit)
