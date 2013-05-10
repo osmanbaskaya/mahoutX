@@ -78,17 +78,24 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
             int userCount = 0;
             FullRunningAverage avg = new FullRunningAverage();
+            boolean firstTime = true;
 
             
             int totalRowCount = 0;
             do {
-                //select * from, ,.... where userid in (select id as userid from auth_user);
-                
-                if (Math.random() < percentUse || (offset <= 6000 && 6000 <= offset + limit)) {
-                    query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn
-                            + " FROM " + preferenceTable
-                            + " WHERE " + rangeColumn + " > " + offset + " AND " + rangeColumn + "  <= " + (offset + limit)
-                            + " ORDER BY " + userIDColumn;
+                if (Math.random() < percentUse || firstTime) {
+                    if (firstTime) {
+                        query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn
+                                + " FROM " + preferenceTable
+                                + " WHERE user_id IN (SELECT id as user_id FROM auth_user)"
+                                + " ORDER BY " + userIDColumn;
+                        firstTime = false;
+                    } else {
+                        query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn
+                                + " FROM " + preferenceTable
+                                + " WHERE " + rangeColumn + " > " + offset + " AND " + rangeColumn + "  <= " + (offset + limit)
+                                + " ORDER BY " + userIDColumn;
+                    }
 
                     log.info("Executing SQL query (offset = {}) : \n{}", offset, query.substring(query.indexOf("WHERE")));
                     rs = stmt.executeQuery(query);
