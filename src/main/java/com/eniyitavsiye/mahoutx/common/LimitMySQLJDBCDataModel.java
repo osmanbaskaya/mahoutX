@@ -34,10 +34,12 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
     private String itemIDColumn;
     private String preferenceColumn;
     private String preferenceTable;
+    private double dataFraction;
 
     public LimitMySQLJDBCDataModel(DataSource dataSource,
                                    String preferenceTable, String userIDColumn, String itemIDColumn,
-                                   String preferenceColumn, String timestampColumn) {
+                                   String preferenceColumn, String timestampColumn,
+                                   double dataFraction) {
         super(dataSource, preferenceTable, userIDColumn, itemIDColumn,
                 preferenceColumn, timestampColumn);
         this.dataSource = dataSource;
@@ -45,6 +47,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
         this.itemIDColumn = itemIDColumn;
         this.preferenceColumn = preferenceColumn;
         this.preferenceTable = preferenceTable;
+        this.dataFraction = dataFraction;
         // TODO Auto-generated constructor stub
     }
 
@@ -69,7 +72,6 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             String rangeColumn = "user_id";
 			int maxUserID = getMaxUserID(conn);
             int limit = maxUserID / 250;
-            double percentUse = 0.1;
 
             log.info("before 500000 allocation: {}.", printFreeMemory());
             FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500_000);
@@ -80,16 +82,20 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             FullRunningAverage avg = new FullRunningAverage();
             boolean firstTime = true;
 
-            
+
+            ResultSet userSet = stmt.executeQuery("SELECT id as user_id FROM auth_user");
             int totalRowCount = 0;
             do {
-                if (Math.random() < percentUse || firstTime) {
+                if (Math.random() <= dataFraction || firstTime) {
                     if (firstTime) {
-                        query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn
-                                + " FROM " + preferenceTable
-                                + " WHERE user_id IN (SELECT id as user_id FROM auth_user)"
-                                + " ORDER BY " + userIDColumn;
-                        firstTime = false;
+                        if (userSet.next()) {
+                            query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn
+                                    + " FROM " + preferenceTable
+                                    + " WHERE user_id = " + userSet.getLong(1);
+                        } else {
+                            firstTime = false;
+                            continue;
+                        }
                     } else {
                         query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn
                                 + " FROM " + preferenceTable
@@ -137,7 +143,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
                 }
 
                 offset += limit;
-            } while (counter != 0);
+            } while (counter != 0 || firstTime);
 
             return result;
 

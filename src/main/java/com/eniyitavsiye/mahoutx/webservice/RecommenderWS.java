@@ -76,7 +76,11 @@ public class RecommenderWS {
 	}
 
 	@WebMethod(operationName = "fetchData")
-	public String fetchData(@WebParam(name = "context") String context) {
+	public String fetchData(@WebParam(name = "context") String context,
+                            @WebParam(name = "dataFraction") Double dataFraction) {
+        if (dataFraction == null) {
+            dataFraction = 1.0;
+        }
 		ContextState current = contextStates.get(context);
 		try {
 			log.log(Level.INFO, "Beginning to fetch data for context {0}.",
@@ -85,7 +89,7 @@ public class RecommenderWS {
 			DBUtil dbUtil = new DBUtil();
 			LimitMySQLJDBCDataModel model = new LimitMySQLJDBCDataModel(
 							new ConnectionPoolDataSource(dbUtil.getDataSource()),
-							context + "_rating", "user_id", "item_id", "rating", null);
+							context + "_rating", "user_id", "item_id", "rating", null, dataFraction);
 			ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(model);
 			//ReplaceableDataModel replaceableModel = new ReplaceableDataModel(reloadModel);
 			dataModels.put(context, reloadModel);
