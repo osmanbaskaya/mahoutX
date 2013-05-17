@@ -81,16 +81,15 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             int userCount = 0;
             FullRunningAverage avg = new FullRunningAverage();
             boolean firstTime = true;
-            boolean skipped = false;
-
+            boolean skipped;
 
             ResultSet userSet = conn
                     .createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)
                     .executeQuery("SELECT id as user_id FROM auth_user");
             int totalRowCount = 0;
             do {
-                skipped = false;
-                if (Math.random() <= dataFraction || firstTime) {
+                skipped = Math.random() > dataFraction;
+                if (!skipped || firstTime) {
                     if (firstTime) {
                         if (userSet.next()) {
                             query = "SELECT " + userIDColumn + ", " + itemIDColumn + ", " + preferenceColumn
@@ -98,6 +97,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
                                     + " WHERE user_id = " + userSet.getLong(1);
                         } else {
                             firstTime = false;
+                            counter = 1;
                             continue;
                         }
                     } else {
@@ -144,8 +144,6 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
                     log.info("\nBlock Time = {} (avg={}) secs with avg {} ms per row.",
                             new Object[]{ timePassedBlock, avg.getAverage(), avgPerLine.getAverage() });
-                } else {
-                    skipped = true;
                 }
 
                 offset += limit;
@@ -187,3 +185,4 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
         return whole;
     }
 }
+
