@@ -83,7 +83,9 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             boolean firstTime = true;
 
 
-            ResultSet userSet = stmt.executeQuery("SELECT id as user_id FROM auth_user");
+            ResultSet userSet = conn
+                    .createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)
+                    .executeQuery("SELECT id as user_id FROM auth_user");
             int totalRowCount = 0;
             do {
                 if (Math.random() <= dataFraction || firstTime) {
