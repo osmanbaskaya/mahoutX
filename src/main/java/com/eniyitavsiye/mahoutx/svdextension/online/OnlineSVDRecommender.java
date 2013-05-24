@@ -1,5 +1,6 @@
 package com.eniyitavsiye.mahoutx.svdextension.online;
 
+import com.eniyitavsiye.mahoutx.common.DataModelUtilities;
 import com.eniyitavsiye.mahoutx.common.ReplaceableDataModel;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import org.apache.mahout.cf.taste.common.NoSuchItemException;
@@ -8,6 +9,7 @@ import org.apache.mahout.cf.taste.common.Refreshable;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.FastByIDMap;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
+import org.apache.mahout.cf.taste.impl.model.GenericPreference;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
 import org.apache.mahout.cf.taste.impl.recommender.AbstractRecommender;
 import org.apache.mahout.cf.taste.impl.recommender.TopItems;
@@ -149,8 +151,15 @@ public class OnlineSVDRecommender extends AbstractRecommender {
         return (float) estimate;
     }
 
-    public void userPreferenceChanged(long userID) {
+    public DataModel userPreferenceChanged(long userID, long itemID, float rat) throws TasteException {
         foldInNecessaryUsers.add(userID);
+        DataModel model = getDataModel();
+        if (model instanceof ReplaceableDataModel) {
+            ReplaceableDataModel replaceableDataModel = (ReplaceableDataModel) model;
+            DataModel newDelegate = DataModelUtilities.addPreferece(replaceableDataModel, new GenericPreference(userID, itemID, rat));
+            return newDelegate;
+        }
+        return model;
     }
 
     /*

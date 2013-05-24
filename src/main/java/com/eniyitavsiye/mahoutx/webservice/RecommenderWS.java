@@ -2,6 +2,7 @@ package com.eniyitavsiye.mahoutx.webservice;
 
 import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
 import com.eniyitavsiye.mahoutx.common.LimitMySQLJDBCDataModel;
+import com.eniyitavsiye.mahoutx.common.ReplaceableDataModel;
 import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsEvaluator;
 import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsWithFoldInEvaluator;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
@@ -15,6 +16,7 @@ import org.apache.mahout.cf.taste.eval.RecommenderEvaluator;
 import org.apache.mahout.cf.taste.example.kddcup.track1.svd.ParallelArraysSGDFactorizer;
 import org.apache.mahout.cf.taste.impl.common.FastIDSet;
 import org.apache.mahout.cf.taste.impl.eval.AverageAbsoluteDifferenceRecommenderEvaluator;
+import org.apache.mahout.cf.taste.impl.model.GenericDataModel;
 import org.apache.mahout.cf.taste.impl.model.file.FileDataModel;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ConnectionPoolDataSource;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
@@ -56,7 +58,8 @@ public class RecommenderWS {
 	private static HashMap<String, Recommender> predictor;
 	private static HashMap<String, RecommenderBuilder> builders;
 	private static HashMap<String, FactorizationCachingFactorizer> factorizationCaches;
-	private static HashMap<String, DataModel> dataModels;
+	private static HashMap<String, DataModel> inMemoryDataModels;
+    private static HashMap<String, DataModel> dbBackedDataModels;
 	private static HashMap<String, ContextState> contextStates;
 	private static HashMap<String, ArrayList<Float>> onlineMaeHistories;
 	private static final Logger log = Logger.getLogger(RecommenderWS.class.getName());
@@ -65,7 +68,8 @@ public class RecommenderWS {
 		predictor = new HashMap<>();
 		builders = new HashMap<>();
 		factorizationCaches = new HashMap<>();
-		dataModels = new HashMap<>();
+		inMemoryDataModels = new HashMap<>();
+        dbBackedDataModels = new HashMap<>();
 		contextStates = new HashMap<>();
 		onlineMaeHistories = new HashMap<>();
 	}
@@ -87,12 +91,13 @@ public class RecommenderWS {
 							context);
 			contextStates.put(context, ContextState.FETCHING);
 			DBUtil dbUtil = new DBUtil();
-			LimitMySQLJDBCDataModel model = new LimitMySQLJDBCDataModel(
+			LimitMySQLJDBCDataModel dbBackedModel = new LimitMySQLJDBCDataModel(
 							new ConnectionPoolDataSource(dbUtil.getDataSource()),
 							context + "_rating", "user_id", "item_id", "rating", null, dataFraction);
-			ReloadFromJDBCDataModel reloadModel = new ReloadFromJDBCDataModel(model);
+            DataModel inMemoryModel = new GenericDataModel(dbBackedModel.exportWithPrefs());
 			//ReplaceableDataModel replaceableModel = new ReplaceableDataModel(reloadModel);
-			dataModels.put(context, reloadModel);
+			inMemoryDataModels.put(context, inMemoryModel);
+            dbBackedDataModels.put(context, dbBackedModel);
 			contextStates.put(context, ContextState.FETCHED);
 			log.log(Level.INFO, "Data fetch for context {0} is completed.", context);
 		} catch (Exception ex) {
@@ -119,11 +124,11 @@ public class RecommenderWS {
         if (foldInUserPercentage != null) {
             KorenIRStatsWithFoldInEvaluator kirse = new KorenIRStatsWithFoldInEvaluator(
                     trainingPercent, foldInUserPercentage, nUnratedItems);
-            result = kirse.evaluateFoldIn(builders.get(context), null, dataModels.get(context), null,
+            result = kirse.evaluateFoldIn(builders.get(context), null, inMemoryDataModels.get(context), null,
                     listSize, relevanceThreshold, evalPercent);
         } else {
             KorenIRStatsEvaluator kirse = new KorenIRStatsEvaluator(trainingPercent, nUnratedItems);
-            result = kirse.evaluate(builders.get(context), null, dataModels.get(context), null,
+            result = kirse.evaluate(builders.get(context), null, inMemoryDataModels.get(context), null,
                             listSize, relevanceThreshold, evalPercent).getRecall() + "";
         }
         log.log(Level.INFO, "Recall result: {0}", result);
@@ -136,10 +141,9 @@ public class RecommenderWS {
 					@WebParam(name = "trainingPercent") final double trainingPercent,
 					@WebParam(name = "evalPercent") final double evalPercent) {
 		try {
-
 			RecommenderBuilder builder = builders.get(context);
 			RecommenderEvaluator evaluator = new AverageAbsoluteDifferenceRecommenderEvaluator();
-			double score = evaluator.evaluate(builder, null, dataModels.get(context), trainingPercent, evalPercent);
+			double score = evaluator.evaluate(builder, null, inMemoryDataModels.get(context), trainingPercent, evalPercent);
 			log.log(Level.INFO, "MAE is {0}.", score);
 			return "" + score;
 		} catch (Exception ex) {
@@ -166,7 +170,7 @@ public class RecommenderWS {
 			return "Illegal context state! " + currentState;
 		}
 		contextStates.put(context, ContextState.BUILDING);
-		DataModel model = dataModels.get(context);
+		DataModel model = inMemoryDataModels.get(context);
 
 		RecommenderBuilder builder = builders.get(context);
 
@@ -361,9 +365,9 @@ public class RecommenderWS {
 			long[] candidateItemIds =
 							new AllUnknownItemsCandidateItemsStrategy()
 								.getCandidateItems(userId,
-										dataModels.get(context).getPreferencesFromUser(userId),
-										dataModels.get(context)
-								).toArray();
+                                        inMemoryDataModels.get(context).getPreferencesFromUser(userId),
+                                        inMemoryDataModels.get(context)
+                                ).toArray();
 			String[] result = new String[candidateItemIds.length];
 			for (int i = 0; i < result.length; ++i) {
 				long itemId = candidateItemIds[i];
@@ -443,7 +447,9 @@ public class RecommenderWS {
 		try {
 
 			OnlineSVDRecommender osr = (OnlineSVDRecommender) predictor.get(context);
-			osr.userPreferenceChanged(userId);//, itemId, rating);
+			DataModel newModel = osr.userPreferenceChanged(userId, itemId, rating);
+
+            inMemoryDataModels.put(context, newModel);
 
 			//immediately calculates mae for measuring online mae.
 			double predictedRating = estimatePreference(context, userId, itemId);
@@ -646,14 +652,14 @@ public class RecommenderWS {
 	public String getPreferrenceForItem(
 					@WebParam(name = "context") String context,
 					@WebParam(name = "itemId") long itemId) throws TasteException {
-		return String.valueOf(dataModels.get(context).getPreferencesForItem(itemId));
+		return String.valueOf(inMemoryDataModels.get(context).getPreferencesForItem(itemId));
 	}
 
 	@WebMethod(operationName = "getPreferrenceFromUser")
 	public String getPreferrenceFromUser(
 					@WebParam(name = "context") String context,
 					@WebParam(name = "userId") long userId) throws TasteException {
-		return String.valueOf(dataModels.get(context).getPreferencesFromUser(userId));
+		return String.valueOf(inMemoryDataModels.get(context).getPreferencesFromUser(userId));
 	}
 
 	@WebMethod(operationName = "getSimilarityBetweenItems")
@@ -668,7 +674,7 @@ public class RecommenderWS {
 	public static void main(String[] args) throws Exception {
 		DataModel model = new FileDataModel(new File("/home/ceyhun/Dropbox/Projects/doctoral/dataset/MovieLens/100k/ratings.dat"));
 		final String context = "movie";
-		dataModels.put(context, model);
+		inMemoryDataModels.put(context, model);
 		contextStates.put(context, ContextState.FETCHED);
 
 
