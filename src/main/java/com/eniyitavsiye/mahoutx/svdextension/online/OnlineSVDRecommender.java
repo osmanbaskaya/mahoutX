@@ -60,6 +60,11 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 
     public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer, CandidateItemsStrategy strategy)
             throws TasteException {
+        this(new ReplaceableDataModel(dataModel), factorizer, strategy);
+    }
+
+    public OnlineSVDRecommender(ReplaceableDataModel dataModel, Factorizer factorizer,
+                                CandidateItemsStrategy strategy) throws TasteException {
         super(dataModel, strategy);
         //this.userFactorUpdater = userFactorUpdater;
         this.itemsOfUsers = new FastByIDMap<>();
@@ -154,9 +159,20 @@ public class OnlineSVDRecommender extends AbstractRecommender {
     public DataModel userPreferenceChanged(long userID, long itemID, float rat) throws TasteException {
         foldInNecessaryUsers.add(userID);
         DataModel model = getDataModel();
+	log.log(Level.INFO, "user: {}, item: {}, rating: {}, Model : {}, ratings before: {}", 
+		new Object[] { 
+			userID,
+			itemID,
+			rat,
+			model.getClass(), 
+			model.getPreferencesFromUser(userID).length() });
         if (model instanceof ReplaceableDataModel) {
             ReplaceableDataModel replaceableDataModel = (ReplaceableDataModel) model;
             DataModel newDelegate = DataModelUtilities.addPreferece(replaceableDataModel, new GenericPreference(userID, itemID, rat));
+	    log.log(Level.INFO, "Ratings after: {}, new rating: {}", 
+		new Object[] { 
+			model.getPreferencesFromUser(userID).length(),
+			model.getPreferenceValue(userID, itemID)});
             return newDelegate;
         }
         return model;

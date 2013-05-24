@@ -2,7 +2,6 @@ package com.eniyitavsiye.mahoutx.webservice;
 
 import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
 import com.eniyitavsiye.mahoutx.common.LimitMySQLJDBCDataModel;
-import com.eniyitavsiye.mahoutx.common.ReplaceableDataModel;
 import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsEvaluator;
 import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsWithFoldInEvaluator;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
@@ -19,7 +18,6 @@ import org.apache.mahout.cf.taste.impl.eval.AverageAbsoluteDifferenceRecommender
 import org.apache.mahout.cf.taste.impl.model.GenericDataModel;
 import org.apache.mahout.cf.taste.impl.model.file.FileDataModel;
 import org.apache.mahout.cf.taste.impl.model.jdbc.ConnectionPoolDataSource;
-import org.apache.mahout.cf.taste.impl.model.jdbc.ReloadFromJDBCDataModel;
 import org.apache.mahout.cf.taste.impl.neighborhood.NearestNUserNeighborhood;
 import org.apache.mahout.cf.taste.impl.neighborhood.ThresholdUserNeighborhood;
 import org.apache.mahout.cf.taste.impl.recommender.AllUnknownItemsCandidateItemsStrategy;
@@ -449,7 +447,7 @@ public class RecommenderWS {
 			OnlineSVDRecommender osr = (OnlineSVDRecommender) predictor.get(context);
 			DataModel newModel = osr.userPreferenceChanged(userId, itemId, rating);
 
-            inMemoryDataModels.put(context, newModel);
+            		inMemoryDataModels.put(context, newModel);
 
 			//immediately calculates mae for measuring online mae.
 			double predictedRating = estimatePreference(context, userId, itemId);
