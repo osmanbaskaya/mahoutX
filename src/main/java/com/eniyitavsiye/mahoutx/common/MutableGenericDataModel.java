@@ -271,7 +271,7 @@ public final class MutableGenericDataModel extends AbstractDataModel {
     throw new UnsupportedOperationException();
   }
 
-  private static void addPreferenceToArray(PreferenceArray array, Preference pref, boolean byUser) {
+  private static PreferenceArray addPreferenceToArray(PreferenceArray array, Preference pref, boolean byUser) {
     int oldLength = array.length();
     PreferenceArray newArray = byUser ? new GenericUserPreferenceArray(oldLength + 1)
                                       : new GenericItemPreferenceArray(oldLength + 1);
@@ -287,6 +287,7 @@ public final class MutableGenericDataModel extends AbstractDataModel {
       }
       newArray.set(i + additional, newArray.get(i));
     }
+    return newArray;
   }
 
   @Override
@@ -301,7 +302,8 @@ public final class MutableGenericDataModel extends AbstractDataModel {
         }
       }
       if (!exists) {
-        addPreferenceToArray(preferences, new GenericPreference(userID, itemID, value), true);
+        PreferenceArray newArray = addPreferenceToArray(preferences, new GenericPreference(userID, itemID, value), true);
+        preferenceFromUsers.put(userID, newArray);
       }
     } else {
       PreferenceArray array = new GenericUserPreferenceArray(1);
@@ -321,7 +323,8 @@ public final class MutableGenericDataModel extends AbstractDataModel {
         }
       }
       if (!exists) {
-        addPreferenceToArray(preferences, new GenericPreference(userID, itemID, value), false);
+        PreferenceArray newArray = addPreferenceToArray(preferences, new GenericPreference(userID, itemID, value), false);
+        preferenceForItems.put(userID, newArray);
       }
     } else {
       PreferenceArray array = new GenericItemPreferenceArray(1);

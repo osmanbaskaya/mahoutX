@@ -7,6 +7,6 @@ package com.eniyitavsiye.mahoutx.webservice;
  */
 public enum ContextState {
 
-    UNKNOWN, FETCHING, FETCHED, CONFIGURED, BUILDING, READY
+  UNKNOWN, FETCHING, FETCHED, CONFIGURED, BUILDING, READY
 
 }
