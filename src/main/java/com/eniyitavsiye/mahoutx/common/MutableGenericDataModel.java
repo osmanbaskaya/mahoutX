@@ -285,7 +285,7 @@ public final class MutableGenericDataModel extends AbstractDataModel {
         newArray.set(i, pref);
         additional++;
       }
-      newArray.set(i + additional, newArray.get(i));
+      newArray.set(i + additional, array.get(i));
     }
     return newArray;
   }
