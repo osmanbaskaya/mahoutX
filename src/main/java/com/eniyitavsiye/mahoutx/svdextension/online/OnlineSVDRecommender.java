@@ -1,6 +1,7 @@
 package com.eniyitavsiye.mahoutx.svdextension.online;
 
 import com.eniyitavsiye.mahoutx.common.DataModelUtilities;
+import com.eniyitavsiye.mahoutx.common.MutableGenericDataModel;
 import com.eniyitavsiye.mahoutx.common.ReplaceableDataModel;
 import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
 import org.apache.mahout.cf.taste.common.NoSuchItemException;
@@ -32,154 +33,153 @@ import java.util.logging.Logger;
 
 public class OnlineSVDRecommender extends AbstractRecommender {
 
-    private static final int iterationCount = 30;
-    private static final double alpha = 0.01;
-    private static final double lambda = 0.02;
+  private static final int iterationCount = 30;
+  private static final double alpha = 0.01;
+  private static final double lambda = 0.02;
 
-    private static final Logger log = Logger.getLogger(OnlineSVDRecommender.class.getName());
+  private static final Logger log = Logger.getLogger(OnlineSVDRecommender.class.getName());
 
-    static {
-        log.setLevel(Level.ALL);
-    }
-    private final FactorizationCachingFactorizer factorizationCachingFactorizer;
-    private final SVDRecommender delegateRecommender;
-    private final int featureCount;
-    //private final UserFactorUpdater userFactorUpdater;
-    /**
-     * We keep track of rated items after build, so that we don't recommend them
-     * back to user.
-     */
-    //private final FastByIDMap<FastIDSet> itemsOfUsers;
-    private final FastByIDMap<PreferenceArray> itemsOfUsers;
-    private final FastByIDMap<double[]> newUserFeatures;
-    private final FastIDSet foldInNecessaryUsers;
+  static {
+    log.setLevel(Level.ALL);
+  }
 
-    public FactorizationCachingFactorizer getFactorizationCachingFactorizer() {
-        return factorizationCachingFactorizer;
-    }
+  private final FactorizationCachingFactorizer factorizationCachingFactorizer;
+  private final SVDRecommender delegateRecommender;
+  private final int featureCount;
+  //private final UserFactorUpdater userFactorUpdater;
+  /**
+   * We keep track of rated items after build, so that we don't recommend them
+   * back to user.
+   */
+  //private final FastByIDMap<FastIDSet> itemsOfUsers;
+  private final FastByIDMap<PreferenceArray> itemsOfUsers;
+  private final FastByIDMap<double[]> newUserFeatures;
+  private final FastIDSet foldInNecessaryUsers;
 
-    public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer, CandidateItemsStrategy strategy)
-            throws TasteException {
-        this(new ReplaceableDataModel(dataModel), factorizer, strategy);
-    }
+  public FactorizationCachingFactorizer getFactorizationCachingFactorizer() {
+    return factorizationCachingFactorizer;
+  }
 
-    public OnlineSVDRecommender(ReplaceableDataModel dataModel, Factorizer factorizer,
-                                CandidateItemsStrategy strategy) throws TasteException {
-        super(dataModel, strategy);
-        //this.userFactorUpdater = userFactorUpdater;
-        this.itemsOfUsers = new FastByIDMap<>();
-        this.newUserFeatures = new FastByIDMap<>();
-        this.foldInNecessaryUsers = new FastIDSet();
-        factorizationCachingFactorizer = new FactorizationCachingFactorizer(factorizer);
-        delegateRecommender = new SVDRecommender(dataModel, factorizationCachingFactorizer);
-        featureCount = factorizationCachingFactorizer.getCachedFactorization().numFeatures();
-    }
+  public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer,
+                              CandidateItemsStrategy strategy) throws TasteException {
+    super(dataModel, strategy);
+    //this.userFactorUpdater = userFactorUpdater;
+    this.itemsOfUsers = new FastByIDMap<>();
+    this.newUserFeatures = new FastByIDMap<>();
+    this.foldInNecessaryUsers = new FastIDSet();
+    factorizationCachingFactorizer = new FactorizationCachingFactorizer(factorizer);
+    delegateRecommender = new SVDRecommender(dataModel, factorizationCachingFactorizer);
+    featureCount = factorizationCachingFactorizer.getCachedFactorization().numFeatures();
+  }
 
-    public double[] foldIn(long user, PreferenceArray ratings) {
-        foldInNecessaryUsers.remove(user);
-        final int nf = featureCount;
-        double userFeatures[] = new double[nf];
-        // TODO initialize with some mean and std dev.
-        Arrays.fill(userFeatures, 0.0);
+  public double[] foldIn(long user, PreferenceArray ratings) {
+    foldInNecessaryUsers.remove(user);
+    final int nf = featureCount;
+    double userFeatures[] = new double[nf];
+    // TODO initialize with some mean and std dev.
+    Arrays.fill(userFeatures, 0.0);
 
-        log.log(Level.INFO, "Folding in with preferences {0}.", ratings);
+    log.log(Level.INFO, "Folding in with preferences {0}.", ratings);
 
-        Factorization fact = factorizationCachingFactorizer.getCachedFactorization();
-        try {
-            double lr = alpha;
-            for (int w = 0; w < iterationCount; ++w) {
-                for (int i = 0; i < ratings.length(); ++i) {
-                    // TODO shuffle ratings
-                    Preference pref = ratings.get(i);
-                    long iid = pref.getItemID();
-                    double r = pref.getValue();
-                    double[] itemFeatures = fact.getItemFeatures(iid);
-                    double estimate = 0;
-                    for (int feature = 0; feature < userFeatures.length; feature++) {
-                        estimate += userFeatures[feature] * itemFeatures[feature];
-                    }
-                    double e = r - estimate;
-                    for (int f = 0; f < nf; f++) {
-                        userFeatures[f] += lr * (e * itemFeatures[f] - lambda * userFeatures[f]);
-                    }
-                }
-            }
-        } catch (NoSuchItemException ex) {
-            log.log(Level.SEVERE, "Non-existent items!", ex);
-            throw new RuntimeException("Non-existent items!", ex);
-        }
-
-        return userFeatures;
-    }
-
-    public double[] updateUserWithFoldIn(long userID, PreferenceArray userPrefs) {
-        Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
-        double[] userFeatures = foldIn(userID, userPrefs);
-        try {
-            //user was available during build process
-            System.arraycopy(userFeatures, 0, factorization.getUserFeatures(userID), 0, featureCount);
-        } catch (NoSuchUserException e) {
-            //user is new.
-            newUserFeatures.put(userID, userFeatures);
-        }
-        return userFeatures;
-    }
-
-    @Override
-    public float estimatePreference(long userID, long itemID)
-            throws TasteException {
-        Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
-        double[] userFeatures;
-        // TODO maybe handle new users with no rating
-        if (foldInNecessaryUsers.contains(userID)) {       // any user with changed ratings
-            PreferenceArray userPrefs = tryToGetFreshPreferences(userID);
-            userFeatures = updateUserWithFoldIn(userID, userPrefs);
-        } else if (newUserFeatures.containsKey(userID)) {   // new user tries to estimate
-            // preference without change in ratings
-            userFeatures = newUserFeatures.get(userID);
-        } else {
-            try {
-                //user was available during build process, but no change in ratings
-                userFeatures = factorization.getUserFeatures(userID);
-            } catch (NoSuchUserException e) {
-                //illegal!
-                log.log(Level.SEVERE, "A new user without rating data tries to estimate preference! {0} {1}",
-                        new Object[] {userID, itemID});
-                return -1;
-            }
-        }
-        double[] itemFeatures = factorization.getItemFeatures(itemID);
-        double estimate = 0;
-        for (int feature = 0; feature < userFeatures.length; feature++) {
+    Factorization fact = factorizationCachingFactorizer.getCachedFactorization();
+    try {
+      double lr = alpha;
+      for (int w = 0; w < iterationCount; ++w) {
+        for (int i = 0; i < ratings.length(); ++i) {
+          // TODO shuffle ratings
+          Preference pref = ratings.get(i);
+          long iid = pref.getItemID();
+          double r = pref.getValue();
+          double[] itemFeatures = fact.getItemFeatures(iid);
+          double estimate = 0;
+          for (int feature = 0; feature < userFeatures.length; feature++) {
             estimate += userFeatures[feature] * itemFeatures[feature];
+          }
+          double e = r - estimate;
+          for (int f = 0; f < nf; f++) {
+            userFeatures[f] += lr * (e * itemFeatures[f] - lambda * userFeatures[f]);
+          }
         }
-        return (float) estimate;
+      }
+    } catch (NoSuchItemException ex) {
+      log.log(Level.SEVERE, "Non-existent items!", ex);
+      throw new RuntimeException("Non-existent items!", ex);
     }
 
-    public DataModel userPreferenceChanged(long userID, long itemID, float rat) throws TasteException {
-        foldInNecessaryUsers.add(userID);
-        DataModel model = getDataModel();
-	log.log(Level.INFO, "user: {}, item: {}, rating: {}, Model : {}, ratings before: {}", 
-		new Object[] { 
-			userID,
-			itemID,
-			rat,
-			model.getClass(), 
-			model.getPreferencesFromUser(userID).length() });
-        if (model instanceof ReplaceableDataModel) {
-            ReplaceableDataModel replaceableDataModel = (ReplaceableDataModel) model;
-            DataModel newDelegate = DataModelUtilities.addPreferece(replaceableDataModel, new GenericPreference(userID, itemID, rat));
-	    log.log(Level.INFO, "Ratings after: {}, new rating: {}", 
-		new Object[] { 
-			model.getPreferencesFromUser(userID).length(),
-			model.getPreferenceValue(userID, itemID)});
-            return newDelegate;
-        }
-        return model;
+    return userFeatures;
+  }
+
+  public double[] updateUserWithFoldIn(long userID, PreferenceArray userPrefs) {
+    Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
+    double[] userFeatures = foldIn(userID, userPrefs);
+    try {
+      //user was available during build process
+      System.arraycopy(userFeatures, 0, factorization.getUserFeatures(userID), 0, featureCount);
+    } catch (NoSuchUserException e) {
+      //user is new.
+      newUserFeatures.put(userID, userFeatures);
     }
+    return userFeatures;
+  }
+
+  @Override
+  public float estimatePreference(long userID, long itemID)
+          throws TasteException {
+    Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
+    double[] userFeatures;
+    // TODO maybe handle new users with no rating
+    if (foldInNecessaryUsers.contains(userID)) {       // any user with changed ratings
+      PreferenceArray userPrefs = tryToGetFreshPreferences(userID);
+      userFeatures = updateUserWithFoldIn(userID, userPrefs);
+    } else if (newUserFeatures.containsKey(userID)) {   // new user tries to estimate
+      // preference without change in ratings
+      userFeatures = newUserFeatures.get(userID);
+    } else {
+      try {
+        //user was available during build process, but no change in ratings
+        userFeatures = factorization.getUserFeatures(userID);
+      } catch (NoSuchUserException e) {
+        //illegal!
+        log.log(Level.SEVERE, "A new user without rating data tries to estimate preference! {0} {1}",
+                new Object[]{userID, itemID});
+        return -1;
+      }
+    }
+    double[] itemFeatures = factorization.getItemFeatures(itemID);
+    double estimate = 0;
+    for (int feature = 0; feature < userFeatures.length; feature++) {
+      estimate += userFeatures[feature] * itemFeatures[feature];
+    }
+    return (float) estimate;
+  }
+
+  public DataModel userPreferenceChanged(long userID, long itemID, float rat) throws TasteException {
+    foldInNecessaryUsers.add(userID);
+    DataModel model = getDataModel();
+/*    log.log(Level.INFO, "user: {}, item: {}, rating: {}, Model : {}, ratings before: {}",
+            new Object[]{
+                    userID,
+                    itemID,
+                    rat,
+                    model.getClass(),
+                    model.getPreferencesFromUser(userID).length()});
+    if (model instanceof ReplaceableDataModel) {
+      ReplaceableDataModel replaceableDataModel = (ReplaceableDataModel) model;
+      DataModel newDelegate = DataModelUtilities.addPreferece(replaceableDataModel, new GenericPreference(userID, itemID, rat));
+      log.log(Level.INFO, "Ratings after: {}, new rating: {}",
+              new Object[]{
+                      model.getPreferencesFromUser(userID).length(),
+                      model.getPreferenceValue(userID, itemID)});
+      return newDelegate;
+    }*/
+    if (model instanceof MutableGenericDataModel) {
+      model.setPreference(userID, itemID, rat);
+    }
+    return model;
+  }
 
     /*
-	public void addPreference(long userID, long itemID, float rat) throws TasteException {
+  public void addPreference(long userID, long itemID, float rat) throws TasteException {
 		foldInNecessaryUsers.add(userID);
 		/*
 		 Factorization factorization = factorizationCachingFactorizer.getCachedFactorization();
@@ -275,92 +275,91 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 	 }
 	 */
 
-    /*
-     @Override
-     public List<RecommendedItem> recommend(final long userID, int howMany,
-     final IDRescorer rescorer) throws TasteException {
+  /*
+   @Override
+   public List<RecommendedItem> recommend(final long userID, int howMany,
+   final IDRescorer rescorer) throws TasteException {
 
-     return delegateRecommender.recommend(userID, howMany, new IDRescorer() {
+   return delegateRecommender.recommend(userID, howMany, new IDRescorer() {
 
-     @Override
-     public double rescore(long id, double originalScore) {
-     return rescorer == null ?
-     originalScore :
-     rescorer.rescore(id, originalScore);
-     }
+   @Override
+   public double rescore(long id, double originalScore) {
+   return rescorer == null ?
+   originalScore :
+   rescorer.rescore(id, originalScore);
+   }
 
-     @Override
-     public boolean isFiltered(long id) {
-     return itemsOfUsers.get(userID).contains(id)
-     || (rescorer == null ? false : rescorer.isFiltered(id));
-     }
-     });
-     }
-     */
-    @Override
-    public void refresh(Collection<Refreshable> alreadyRefreshed) {
-        // rebuild system in an offline manner
-        // cleanup every newuser related field.
-        // TODO test!
-        delegateRecommender.refresh(alreadyRefreshed);
-        itemsOfUsers.clear();
+   @Override
+   public boolean isFiltered(long id) {
+   return itemsOfUsers.get(userID).contains(id)
+   || (rescorer == null ? false : rescorer.isFiltered(id));
+   }
+   });
+   }
+   */
+  @Override
+  public void refresh(Collection<Refreshable> alreadyRefreshed) {
+    // rebuild system in an offline manner
+    // cleanup every newuser related field.
+    // TODO test!
+    delegateRecommender.refresh(alreadyRefreshed);
+    itemsOfUsers.clear();
+  }
+
+  @Override
+  public List<RecommendedItem> recommend(final long userID, int howMany,
+                                         IDRescorer rescorer) throws TasteException {
+    //Preconditions.checkArgument(howMany >= 1, "howMany must be at least 1");
+    //log.debug("Recommending items for user ID '{}'", userID);
+
+    log.log(Level.INFO, "Beginning generation of recommendations for user : {0}", userID);
+    PreferenceArray preferencesFromUser = tryToGetFreshPreferences(userID);
+    log.log(Level.INFO, "User preferences: {0}", preferencesFromUser);
+    FastIDSet possibleItemIDs = getAllOtherItems(userID, preferencesFromUser);
+    log.log(Level.INFO, "Candidtate items for user: {0}", possibleItemIDs);
+
+    List<RecommendedItem> topItems = TopItems.getTopItems(howMany, possibleItemIDs.iterator(), rescorer,
+            new Estimator<Long>() {
+              @Override
+              public double estimate(Long itemID) throws TasteException {
+                return estimatePreference(userID, itemID);
+              }
+            });
+    log.log(Level.INFO, "Recommendations are: {0}", topItems);
+
+    return topItems;
+  }
+
+  private PreferenceArray tryToGetFreshPreferences(long userID) throws TasteException {
+    // TODO always test this after changing fetchData web method!
+    // TODO handle non-existent user query from in-memory data models.
+    // try to get fresh data from db, if underlying DataModel somehow permits.
+    DataModel model = getDataModel();
+    PreferenceArray userPrefs;
+    //if underlying model is in-memory data model
+    if (true) {
+      return model.getPreferencesFromUser(userID);
+    } else if (model instanceof ReloadFromJDBCDataModel) {
+      //then it must have a JDBCDataModel as a delegate, query from that.
+      userPrefs = ((ReloadFromJDBCDataModel) model).getDelegate().getPreferencesFromUser(userID);
+      //if the model is replaceable data model,
+    } else if (model instanceof ReplaceableDataModel) {
+      ReplaceableDataModel replaceableDataModel = (ReplaceableDataModel) model;
+      //then check if it has a MySQLJDBCDataModel as its delegate,
+      if (replaceableDataModel.getDelegate() instanceof ReloadFromJDBCDataModel) {
+        // if so, query from that delegate
+        ReloadFromJDBCDataModel reloadFromJDBCDataModel =
+                ((ReloadFromJDBCDataModel) replaceableDataModel.getDelegate());
+        userPrefs = reloadFromJDBCDataModel.getDelegate().getPreferencesFromUser(userID);
+      } else {
+        //otherwise nothing to do, query from the available model.
+        userPrefs = replaceableDataModel.getPreferencesFromUser(userID);
+      }
+    } else { //some data model we currently don't know about.
+      //again take what current model gives.
+      userPrefs = model.getPreferencesFromUser(userID);
     }
-
-    @Override
-    public List<RecommendedItem> recommend(final long userID, int howMany,
-                                           IDRescorer rescorer) throws TasteException {
-        //Preconditions.checkArgument(howMany >= 1, "howMany must be at least 1");
-        //log.debug("Recommending items for user ID '{}'", userID);
-
-        log.log(Level.INFO, "Beginning generation of recommendations for user : {0}", userID);
-        PreferenceArray preferencesFromUser = tryToGetFreshPreferences(userID);
-        log.log(Level.INFO, "User preferences: {0}", preferencesFromUser);
-        FastIDSet possibleItemIDs = getAllOtherItems(userID, preferencesFromUser);
-        log.log(Level.INFO, "Candidtate items for user: {0}", possibleItemIDs);
-
-        List<RecommendedItem> topItems = TopItems.getTopItems(howMany, possibleItemIDs.iterator(), rescorer,
-                new Estimator<Long>() {
-                    @Override
-                    public double estimate(Long itemID) throws TasteException {
-                        return estimatePreference(userID, itemID);
-                    }
-                });
-        log.log(Level.INFO, "Recommendations are: {0}", topItems);
-
-        return topItems;
-    }
-
-    private PreferenceArray tryToGetFreshPreferences(long userID) throws TasteException {
-        // TODO always test this after changing fetchData web method!
-        // TODO handle non-existent user query from in-memory data models.
-        // try to get fresh data from db, if underlying DataModel somehow permits.
-        DataModel model = getDataModel();
-        PreferenceArray userPrefs;
-        //if underlying model is in-memory data model
-        if (true) {
-            return model.getPreferencesFromUser(userID);
-        }
-        else if (model instanceof ReloadFromJDBCDataModel) {
-            //then it must have a JDBCDataModel as a delegate, query from that.
-            userPrefs = ((ReloadFromJDBCDataModel)model).getDelegate().getPreferencesFromUser(userID);
-            //if the model is replaceable data model,
-        } else if (model instanceof ReplaceableDataModel) {
-            ReplaceableDataModel replaceableDataModel = (ReplaceableDataModel) model;
-            //then check if it has a MySQLJDBCDataModel as its delegate,
-            if (replaceableDataModel.getDelegate() instanceof ReloadFromJDBCDataModel) {
-                // if so, query from that delegate
-                ReloadFromJDBCDataModel reloadFromJDBCDataModel =
-                        ((ReloadFromJDBCDataModel) replaceableDataModel.getDelegate());
-                userPrefs = reloadFromJDBCDataModel.getDelegate().getPreferencesFromUser(userID);
-            } else {
-                //otherwise nothing to do, query from the available model.
-                userPrefs = replaceableDataModel.getPreferencesFromUser(userID);
-            }
-        } else { //some data model we currently don't know about.
-            //again take what current model gives.
-            userPrefs = model.getPreferencesFromUser(userID);
-        }
-        return userPrefs;
-    }
+    return userPrefs;
+  }
 
 }

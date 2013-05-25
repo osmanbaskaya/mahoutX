@@ -2,6 +2,7 @@ package com.eniyitavsiye.mahoutx.webservice;
 
 import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
 import com.eniyitavsiye.mahoutx.common.LimitMySQLJDBCDataModel;
+import com.eniyitavsiye.mahoutx.common.MutableGenericDataModel;
 import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsEvaluator;
 import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsWithFoldInEvaluator;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
@@ -92,7 +93,7 @@ public class RecommenderWS {
 			LimitMySQLJDBCDataModel dbBackedModel = new LimitMySQLJDBCDataModel(
 							new ConnectionPoolDataSource(dbUtil.getDataSource()),
 							context + "_rating", "user_id", "item_id", "rating", null, dataFraction);
-            DataModel inMemoryModel = new GenericDataModel(dbBackedModel.exportWithPrefs());
+      DataModel inMemoryModel = new MutableGenericDataModel(dbBackedModel.exportWithPrefs());
 			//ReplaceableDataModel replaceableModel = new ReplaceableDataModel(reloadModel);
 			inMemoryDataModels.put(context, inMemoryModel);
             dbBackedDataModels.put(context, dbBackedModel);
