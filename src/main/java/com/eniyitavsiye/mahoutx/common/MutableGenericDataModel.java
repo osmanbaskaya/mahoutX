@@ -309,9 +309,9 @@ public final class MutableGenericDataModel extends AbstractDataModel {
       PreferenceArray array = new GenericUserPreferenceArray(1);
       array.set(0, new GenericPreference(userID, itemID, value));
       long[] newUsers = Arrays.copyOf(userIDs, userIDs.length + 1);
-      newUsers[itemIDs.length] = itemID;
+      newUsers[userIDs.length] = userID;
       Arrays.sort(newUsers);
-      itemIDs = newUsers;
+      userIDs = newUsers;
     }
     if (preferenceForItems.containsKey(itemID)) {
       PreferenceArray preferences = preferenceForItems.get(itemID);
