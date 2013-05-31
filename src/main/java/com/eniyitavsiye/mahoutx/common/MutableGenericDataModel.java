@@ -324,7 +324,7 @@ public final class MutableGenericDataModel extends AbstractDataModel {
       }
       if (!exists) {
         PreferenceArray newArray = addPreferenceToArray(preferences, new GenericPreference(userID, itemID, value), false);
-        preferenceForItems.put(userID, newArray);
+        preferenceForItems.put(itemID, newArray);
       }
     } else {
       PreferenceArray array = new GenericItemPreferenceArray(1);
