@@ -50,6 +50,8 @@ import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static com.eniyitavsiye.mahoutx.common.Util.*;
+
 @WebService(serviceName = "RecommenderWS")
 public class RecommenderWS {
 
@@ -436,6 +438,7 @@ public class RecommenderWS {
     }
   }
 
+
   @WebMethod(operationName = "addPreference")
   public void addPreference(
           @WebParam(name = "context") String context,
@@ -445,7 +448,11 @@ public class RecommenderWS {
     try {
 
       OnlineSVDRecommender osr = (OnlineSVDRecommender) predictor.get(context);
+      log.log(Level.INFO, "Changing Preference for {0} {1} to {2}", 
+	      asArray(userId, itemId, rating));
       DataModel newModel = osr.userPreferenceChanged(userId, itemId, rating);
+      log.log(Level.INFO, "Changed Preference for {0} {1} to {2}", 
+	      asArray(userId, itemId, rating));
 
       inMemoryDataModels.put(context, newModel);
 

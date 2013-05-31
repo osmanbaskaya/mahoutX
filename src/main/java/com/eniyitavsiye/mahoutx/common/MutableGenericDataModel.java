@@ -291,7 +291,7 @@ public final class MutableGenericDataModel extends AbstractDataModel {
   }
 
   @Override
-  public void setPreference(long userID, long itemID, float value) {
+  public synchronized void setPreference(long userID, long itemID, float value) {
     if (preferenceFromUsers.containsKey(userID)) {
       PreferenceArray preferences = preferenceFromUsers.get(userID);
       boolean exists = false;
