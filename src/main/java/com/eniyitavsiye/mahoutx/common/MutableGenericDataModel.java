@@ -312,6 +312,7 @@ public final class MutableGenericDataModel extends AbstractDataModel {
       newUsers[userIDs.length] = userID;
       Arrays.sort(newUsers);
       userIDs = newUsers;
+      preferenceFromUsers.put(userID, array);
     }
     if (preferenceForItems.containsKey(itemID)) {
       PreferenceArray preferences = preferenceForItems.get(itemID);
@@ -333,6 +334,7 @@ public final class MutableGenericDataModel extends AbstractDataModel {
       newItems[itemIDs.length] = itemID;
       Arrays.sort(newItems);
       itemIDs = newItems;
+      preferenceForItems.put(itemID, array);
     }
   }
 
