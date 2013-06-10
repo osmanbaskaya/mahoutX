@@ -705,5 +705,6 @@ public class RecommenderWS {
 		 recommenderWS.getRecommendationListPaginated(context, 1, "", 1, 100);
 		 */
     //recommenderWS.estimatePreference(context, 2, 1);
+    //test log
   }
 }
