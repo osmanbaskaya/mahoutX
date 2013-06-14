@@ -145,7 +145,14 @@ public class OnlineSVDRecommender extends AbstractRecommender {
         return -1;
       }
     }
-    double[] itemFeatures = factorization.getItemFeatures(itemID);
+    double[] itemFeatures;
+    try {
+      itemFeatures = factorization.getItemFeatures(itemID);
+    } catch (Exception e) {
+        log.log(Level.FINE, "A requested preference estimation for a new item! user: {0}, item: {1}",
+                new Object[]{userID, itemID});
+        return -1;
+    }
     double estimate = 0;
     for (int feature = 0; feature < userFeatures.length; feature++) {
       estimate += userFeatures[feature] * itemFeatures[feature];
