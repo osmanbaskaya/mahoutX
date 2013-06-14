@@ -330,7 +330,7 @@ public class RecommenderWS {
         }
 
         OnlineSVDRecommender osr = new OnlineSVDRecommender(dataModel, cachingFactorizer, strategy);
-	osr.setIterationCount(foldInIteration);
+	osr.setIterationCount(foldInIter);
 	osr.setAlpha(foldInAlph);
 	osr.setLambda(foldInLambd);
 	return osr;
