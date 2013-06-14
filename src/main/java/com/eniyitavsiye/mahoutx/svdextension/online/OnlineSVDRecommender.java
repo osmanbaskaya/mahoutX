@@ -82,28 +82,28 @@ public class OnlineSVDRecommender extends AbstractRecommender {
     log.log(Level.INFO, "Folding in with preferences {0}.", ratings);
 
     Factorization fact = factorizationCachingFactorizer.getCachedFactorization();
-    try {
-      double lr = alpha;
-      for (int w = 0; w < iterationCount; ++w) {
-        for (int i = 0; i < ratings.length(); ++i) {
-          // TODO shuffle ratings
-          Preference pref = ratings.get(i);
-          long iid = pref.getItemID();
-          double r = pref.getValue();
-          double[] itemFeatures = fact.getItemFeatures(iid);
-          double estimate = 0;
-          for (int feature = 0; feature < userFeatures.length; feature++) {
-            estimate += userFeatures[feature] * itemFeatures[feature];
-          }
-          double e = r - estimate;
-          for (int f = 0; f < nf; f++) {
-            userFeatures[f] += lr * (e * itemFeatures[f] - lambda * userFeatures[f]);
-          }
+    double lr = alpha;
+    for (int w = 0; w < iterationCount; ++w) {
+      for (int i = 0; i < ratings.length(); ++i) {
+        // TODO shuffle ratings
+        Preference pref = ratings.get(i);
+        long iid = pref.getItemID();
+        double r = pref.getValue();
+        double[] itemFeatures;
+        try {
+          itemFeatures = fact.getItemFeatures(iid);
+        } catch (Exception e) {
+          continue;
+        }
+        double estimate = 0;
+        for (int feature = 0; feature < userFeatures.length; feature++) {
+          estimate += userFeatures[feature] * itemFeatures[feature];
+        }
+        double e = r - estimate;
+        for (int f = 0; f < nf; f++) {
+          userFeatures[f] += lr * (e * itemFeatures[f] - lambda * userFeatures[f]);
         }
       }
-    } catch (NoSuchItemException ex) {
-      log.log(Level.SEVERE, "Non-existent items!", ex);
-      throw new RuntimeException("Non-existent items!", ex);
     }
 
     return userFeatures;
