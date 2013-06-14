@@ -282,8 +282,14 @@ public class RecommenderWS {
           @WebParam(name = "factorizerName") final String factorizerName,
           @WebParam(name = "nFactors") final int nFactors,
           @WebParam(name = "nIterations") final int nIterations,
-          @WebParam(name = "candidateItemStrategy") final String candidateItemStrategy) {
+          @WebParam(name = "candidateItemStrategy") final String candidateItemStrategy,
+          @WebParam(name = "foldInIteration") final Integer foldInIteration,
+          @WebParam(name = "foldInAlpha") final Double foldInAlpha,
+          @WebParam(name = "foldInLambda") final Double foldInLambda) {
 
+    final int foldInIter = foldInIteration == null ? 30 : foldInIteration;
+    final double foldInAlph = foldInAlpha == null ? 0.01 : foldInAlpha;
+    final double foldInLambd = foldInLambda == null ? 0.02 : foldInLambda;
 
     RecommenderBuilder builder = new RecommenderBuilder() {
       @Override
@@ -323,7 +329,11 @@ public class RecommenderWS {
           strategy = new AllUnknownItemsCandidateItemsStrategy();
         }
 
-        return new OnlineSVDRecommender(dataModel, cachingFactorizer, strategy);
+        OnlineSVDRecommender osr = new OnlineSVDRecommender(dataModel, cachingFactorizer, strategy);
+	osr.setIterationCount(foldInIteration);
+	osr.setAlpha(foldInAlph);
+	osr.setLambda(foldInLambd);
+	return osr;
       }
     };
     log.log(Level.INFO, "Configuration set.");

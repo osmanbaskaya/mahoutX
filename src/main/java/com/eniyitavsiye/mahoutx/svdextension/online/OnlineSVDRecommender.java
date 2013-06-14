@@ -33,9 +33,9 @@ import java.util.logging.Logger;
 
 public class OnlineSVDRecommender extends AbstractRecommender {
 
-  private static final int iterationCount = 30;
-  private static final double alpha = 0.01;
-  private static final double lambda = 0.02;
+  private int iterationCount = 30;
+  private double alpha = 0.01;
+  private double lambda = 0.02;
 
   private static final Logger log = Logger.getLogger(OnlineSVDRecommender.class.getName());
 
@@ -58,6 +58,30 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 
   public FactorizationCachingFactorizer getFactorizationCachingFactorizer() {
     return factorizationCachingFactorizer;
+  }
+
+  public int getIterationCount() {
+    return iterationCount;
+  }
+
+  public void setIterationCount(int iterationCount) {
+    this.iterationCount = iterationCount;
+  }
+
+  public double getAlpha() {
+    return alpha;
+  }
+
+  public void setAlpha(double alpha) {
+    this.alpha = alpha;
+  }
+
+  public double getLambda() {
+    return lambda;
+  }
+
+  public void setLambda(double lambda) {
+    this.lambda = lambda;
   }
 
   public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer,
