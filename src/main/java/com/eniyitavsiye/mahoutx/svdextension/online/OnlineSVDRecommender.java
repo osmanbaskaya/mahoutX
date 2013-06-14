@@ -28,6 +28,7 @@ import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -101,7 +102,10 @@ public class OnlineSVDRecommender extends AbstractRecommender {
     final int nf = featureCount;
     double userFeatures[] = new double[nf];
     // TODO initialize with some mean and std dev.
-    Arrays.fill(userFeatures, 0.0);
+    Random rGen = new Random();
+    for (int i = 0; i < nf; ++i) {
+      userFeatures[i] = rGen.nextGaussian()*0.3;
+    }
 
     log.log(Level.INFO, "Folding in with preferences {0}.", ratings);
 
