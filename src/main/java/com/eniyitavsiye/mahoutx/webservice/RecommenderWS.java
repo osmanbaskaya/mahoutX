@@ -51,6 +51,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.eniyitavsiye.mahoutx.common.Util.*;
+import static com.eniyitavsiye.mahoutx.common.DataModelUtilities.*;
 
 @WebService(serviceName = "RecommenderWS")
 public class RecommenderWS {
@@ -684,6 +685,34 @@ public class RecommenderWS {
           @WebParam(name = "itemId2") long itemId2) throws TasteException {
     ItemSimilarity sim = ((GenericItemBasedRecommender) predictor.get(context)).getSimilarity();
     return sim.itemSimilarity(itemId1, itemId2);
+  }
+
+  @WebMethod(operationName = "getSystemStatistics")
+  public String getSystemStatistics(
+          @WebParam(name = "context") String context) throws TasteException {
+    StringBuilder result = new StringBuilder();
+
+    DataModel model = inMemoryDataModels.get(context);
+    OnlineSVDRecommender osr = (OnlineSVDRecommender) predictor.get(context);
+    int itemsWithFactors = osr.getFactorizationCachingFactorizer().getCachedFactorization().numItems();
+    int numAdditionalUsers = osr.getNumAdditionalUsers();
+
+    DBUtil util = new DBUtil();
+
+    result.append("#Memory Preference: ").append(getTotalPreferenceCount(model)).append('\n')
+          .append("#Memory User: ").append(model.getNumUsers()).append('\n')
+          .append("#Memory Item: ").append(model.getNumItems()).append('\n')
+
+          .append("#Database Preference: ").append(util.getNumPreferences(context)).append('\n')
+          .append("#Database User: ").append(util.getNumUsers(context)).append('\n')
+          .append("#Database Item: ").append(util.getNumItems(context)).append('\n')
+
+          .append("#Items with Factors: ").append(itemsWithFactors).append('\n')
+          .append("#Users with Fold-in: ").append(numAdditionalUsers).append('\n');
+
+
+
+    return result.toString();
   }
 
   public static void main(String[] args) throws Exception {

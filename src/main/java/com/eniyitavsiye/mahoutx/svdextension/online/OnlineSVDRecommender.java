@@ -397,4 +397,8 @@ public class OnlineSVDRecommender extends AbstractRecommender {
     return userPrefs;
   }
 
+  public int getNumAdditionalUsers() {
+    return newUserFeatures.size();
+  }
+
 }
