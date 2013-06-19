@@ -59,4 +59,13 @@ public class DataModelUtilities {
         return preferences;
     }
 
+    public static long getTotalPreferenceCount(DataModel model) throws TasteException {
+        long totalPreferenceCount = 0L;
+        LongPrimitiveIterator itemIDs = model.getItemIDs();
+        while (itemIDs.hasNext()) {
+          totalPreferenceCount += model.getPreferencesForItem(itemIDs.nextLong()).length();
+        }
+        return totalPreferenceCount;
+    }
+
 }

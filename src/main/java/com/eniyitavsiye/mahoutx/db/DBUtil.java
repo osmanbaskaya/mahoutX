@@ -133,4 +133,44 @@ public class DBUtil {
         System.out.println(usersNotFollowing.contains(6043L));
     }
 
+    public long getNumPreferences(String context) {
+      StringBuilder sql = new StringBuilder()
+                .append("select count(*) from ")
+                .append(context).append("_rating");
+      return executeCountQuery(sql);
+    }
+
+    public long getNumUsers(String context) {
+      StringBuilder sql = new StringBuilder()
+              .append("select count(distinct user_id) from ")
+              .append(context).append("_rating");
+      return executeCountQuery(sql);
+    }
+
+    public long getNumItems(String context) {
+      StringBuilder sql = new StringBuilder()
+              .append("select count(distinct item_id) from ")
+              .append(context).append("_rating");
+      return executeCountQuery(sql);
+    }
+
+
+  private long executeCountQuery(CharSequence sql) {
+    try{
+      MysqlDataSource datasource = getDataSource();
+      Connection con = datasource.getConnection();
+
+      PreparedStatement prest = con.prepareStatement(sql.toString());
+      ResultSet rs = prest.executeQuery();
+      rs.next();
+      long prefCount = rs.getLong(1);
+      prest.close();
+      con.close();
+      return prefCount;
+    } catch (SQLException | NumberFormatException ex) {
+      log.log(Level.SEVERE, null, ex);
+      return -1;
+    }
+  }
+
 }

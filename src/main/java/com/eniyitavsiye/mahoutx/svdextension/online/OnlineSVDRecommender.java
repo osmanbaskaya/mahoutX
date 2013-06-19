@@ -28,14 +28,15 @@ import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class OnlineSVDRecommender extends AbstractRecommender {
 
-  private static final int iterationCount = 30;
-  private static final double alpha = 0.01;
-  private static final double lambda = 0.02;
+  private int iterationCount = 30;
+  private double alpha = 0.01;
+  private double lambda = 0.02;
 
   private static final Logger log = Logger.getLogger(OnlineSVDRecommender.class.getName());
 
@@ -60,6 +61,30 @@ public class OnlineSVDRecommender extends AbstractRecommender {
     return factorizationCachingFactorizer;
   }
 
+  public int getIterationCount() {
+    return iterationCount;
+  }
+
+  public void setIterationCount(int iterationCount) {
+    this.iterationCount = iterationCount;
+  }
+
+  public double getAlpha() {
+    return alpha;
+  }
+
+  public void setAlpha(double alpha) {
+    this.alpha = alpha;
+  }
+
+  public double getLambda() {
+    return lambda;
+  }
+
+  public void setLambda(double lambda) {
+    this.lambda = lambda;
+  }
+
   public OnlineSVDRecommender(DataModel dataModel, Factorizer factorizer,
                               CandidateItemsStrategy strategy) throws TasteException {
     super(dataModel, strategy);
@@ -77,33 +102,36 @@ public class OnlineSVDRecommender extends AbstractRecommender {
     final int nf = featureCount;
     double userFeatures[] = new double[nf];
     // TODO initialize with some mean and std dev.
-    Arrays.fill(userFeatures, 0.0);
+    Random rGen = new Random();
+    for (int i = 0; i < nf; ++i) {
+      userFeatures[i] = rGen.nextGaussian()*0.3;
+    }
 
     log.log(Level.INFO, "Folding in with preferences {0}.", ratings);
 
     Factorization fact = factorizationCachingFactorizer.getCachedFactorization();
-    try {
-      double lr = alpha;
-      for (int w = 0; w < iterationCount; ++w) {
-        for (int i = 0; i < ratings.length(); ++i) {
-          // TODO shuffle ratings
-          Preference pref = ratings.get(i);
-          long iid = pref.getItemID();
-          double r = pref.getValue();
-          double[] itemFeatures = fact.getItemFeatures(iid);
-          double estimate = 0;
-          for (int feature = 0; feature < userFeatures.length; feature++) {
-            estimate += userFeatures[feature] * itemFeatures[feature];
-          }
-          double e = r - estimate;
-          for (int f = 0; f < nf; f++) {
-            userFeatures[f] += lr * (e * itemFeatures[f] - lambda * userFeatures[f]);
-          }
+    double lr = alpha;
+    for (int w = 0; w < iterationCount; ++w) {
+      for (int i = 0; i < ratings.length(); ++i) {
+        // TODO shuffle ratings
+        Preference pref = ratings.get(i);
+        long iid = pref.getItemID();
+        double r = pref.getValue();
+        double[] itemFeatures;
+        try {
+          itemFeatures = fact.getItemFeatures(iid);
+        } catch (Exception e) {
+          continue;
+        }
+        double estimate = 0;
+        for (int feature = 0; feature < userFeatures.length; feature++) {
+          estimate += userFeatures[feature] * itemFeatures[feature];
+        }
+        double e = r - estimate;
+        for (int f = 0; f < nf; f++) {
+          userFeatures[f] += lr * (e * itemFeatures[f] - lambda * userFeatures[f]);
         }
       }
-    } catch (NoSuchItemException ex) {
-      log.log(Level.SEVERE, "Non-existent items!", ex);
-      throw new RuntimeException("Non-existent items!", ex);
     }
 
     return userFeatures;
@@ -145,7 +173,14 @@ public class OnlineSVDRecommender extends AbstractRecommender {
         return -1;
       }
     }
-    double[] itemFeatures = factorization.getItemFeatures(itemID);
+    double[] itemFeatures;
+    try {
+      itemFeatures = factorization.getItemFeatures(itemID);
+    } catch (Exception e) {
+        log.log(Level.FINE, "A requested preference estimation for a new item! user: {0}, item: {1}",
+                new Object[]{userID, itemID});
+        return -1;
+    }
     double estimate = 0;
     for (int feature = 0; feature < userFeatures.length; feature++) {
       estimate += userFeatures[feature] * itemFeatures[feature];
@@ -360,6 +395,10 @@ public class OnlineSVDRecommender extends AbstractRecommender {
       userPrefs = model.getPreferencesFromUser(userID);
     }
     return userPrefs;
+  }
+
+  public int getNumAdditionalUsers() {
+    return newUserFeatures.size();
   }
 
 }
