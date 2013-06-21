@@ -150,8 +150,9 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
                     log.info("\nBlock Time = {} (avg={}) secs with avg {} ms per row.",
                             new Object[]{ timePassedBlock, avg.getAverage(), avgPerLine.getAverage() });
                 }
-
-                offset += limit;
+                if (!firstTime) {
+		    offset += limit;
+		}
             } while (currentBlockCount < totalBlockCount || skipped || firstTime);
 
             return result;
