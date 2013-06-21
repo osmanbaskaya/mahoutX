@@ -24,6 +24,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import org.apache.mahout.cf.taste.impl.model.GenericItemPreferenceArray;
 
 public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
@@ -154,6 +155,9 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 		    offset += limit;
 		}
             } while (currentBlockCount < totalBlockCount || skipped || firstTime);
+            if (!prefs.isEmpty()) {
+                result.put(currentUserID, new GenericUserPreferenceArray(prefs));
+	    }
 
             return result;
 
