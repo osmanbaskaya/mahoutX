@@ -71,7 +71,8 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
             String rangeColumn = "user_id";
 			int maxUserID = getMaxUserID(conn);
-            int limit = maxUserID / 250;
+	    int totalBlockCount = 250;
+            int limit = maxUserID / totalBlockCount;
 
             log.info("before 500000 allocation: {}.", printFreeMemory());
             FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500_000);
@@ -79,6 +80,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             long currentUserID = -1;
 
             int userCount = 0;
+	    int currentBlockCount = 0;
             FullRunningAverage avg = new FullRunningAverage();
             boolean firstTime = true;
             boolean skipped;
@@ -89,6 +91,9 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             int totalRowCount = 0;
             do {
                 skipped = Math.random() > dataFraction;
+		if (!firstTime) {
+		    ++currentBlockCount;
+		}
                 if (!skipped || firstTime) {
                     if (firstTime) {
                         if (userSet.next()) {
@@ -147,7 +152,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
                 }
 
                 offset += limit;
-            } while (counter != 0 || skipped || firstTime);
+            } while (currentBlockCount < totalBlockCount || skipped || firstTime);
 
             return result;
 

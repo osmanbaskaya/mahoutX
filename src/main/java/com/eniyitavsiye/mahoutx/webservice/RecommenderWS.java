@@ -690,9 +690,11 @@ public class RecommenderWS {
   @WebMethod(operationName = "getSystemStatistics")
   public String getSystemStatistics(
           @WebParam(name = "context") String context) throws TasteException {
+
     StringBuilder result = new StringBuilder();
 
     DataModel model = inMemoryDataModels.get(context);
+
     OnlineSVDRecommender osr = (OnlineSVDRecommender) predictor.get(context);
     int itemsWithFactors = osr.getFactorizationCachingFactorizer().getCachedFactorization().numItems();
     int numAdditionalUsers = osr.getNumAdditionalUsers();
