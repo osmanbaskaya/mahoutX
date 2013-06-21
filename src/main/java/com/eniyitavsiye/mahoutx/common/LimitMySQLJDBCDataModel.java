@@ -70,8 +70,8 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             String query;
 
             String rangeColumn = "user_id";
-			int maxUserID = getMaxUserID(conn);
-	    int totalBlockCount = 250;
+	    int maxUserID = getMaxUserID(conn);
+	    int totalBlockCount = 10;
             int limit = maxUserID / totalBlockCount;
 
             log.info("before 500000 allocation: {}.", printFreeMemory());
