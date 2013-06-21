@@ -144,8 +144,8 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
                     userCount += blockUserCount;
                     totalRowCount += counter;
 
-                    log.info("\n#users so far = {}, #block users = {},#total rows = {}, #block row = {}.",
-                            new Object[]{ userCount, blockUserCount, totalRowCount, counter });
+                    log.info("\nblock:{}\n#users so far = {}, #block users = {},#total rows = {}, #block row = {}.",
+                            new Object[]{ currentBlockCount, userCount, blockUserCount, totalRowCount, counter });
 
                     log.info("\nBlock Time = {} (avg={}) secs with avg {} ms per row.",
                             new Object[]{ timePassedBlock, avg.getAverage(), avgPerLine.getAverage() });
