@@ -24,6 +24,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import org.apache.mahout.cf.taste.impl.model.GenericItemPreferenceArray;
 
 public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
@@ -70,8 +71,9 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             String query;
 
             String rangeColumn = "user_id";
-			int maxUserID = getMaxUserID(conn);
-            int limit = maxUserID / 250;
+	    int maxUserID = getMaxUserID(conn);
+	    int totalBlockCount = 10;
+            int limit = maxUserID / totalBlockCount;
 
             log.info("before 500000 allocation: {}.", printFreeMemory());
             FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500_000);
@@ -79,6 +81,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             long currentUserID = -1;
 
             int userCount = 0;
+	    int currentBlockCount = 0;
             FullRunningAverage avg = new FullRunningAverage();
             boolean firstTime = true;
             boolean skipped;
@@ -89,6 +92,9 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             int totalRowCount = 0;
             do {
                 skipped = Math.random() > dataFraction;
+		if (!firstTime) {
+		    ++currentBlockCount;
+		}
                 if (!skipped || firstTime) {
                     if (firstTime) {
                         if (userSet.next()) {
@@ -139,15 +145,19 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
                     userCount += blockUserCount;
                     totalRowCount += counter;
 
-                    log.info("\n#users so far = {}, #block users = {},#total rows = {}, #block row = {}.",
-                            new Object[]{ userCount, blockUserCount, totalRowCount, counter });
+                    log.info("\nblock:{}\n#users so far = {}, #block users = {},#total rows = {}, #block row = {}.",
+                            new Object[]{ currentBlockCount, userCount, blockUserCount, totalRowCount, counter });
 
                     log.info("\nBlock Time = {} (avg={}) secs with avg {} ms per row.",
                             new Object[]{ timePassedBlock, avg.getAverage(), avgPerLine.getAverage() });
                 }
-
-                offset += limit;
-            } while (counter != 0 || skipped || firstTime);
+                if (!firstTime) {
+		    offset += limit;
+		}
+            } while (currentBlockCount < totalBlockCount || skipped || firstTime);
+            if (!prefs.isEmpty()) {
+                result.put(currentUserID, new GenericUserPreferenceArray(prefs));
+	    }
 
             return result;
 
