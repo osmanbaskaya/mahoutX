@@ -81,7 +81,11 @@ public class KorenIRStatsWithFoldInEvaluator {
                         userID, dataModel, foldInUserPercentage);
             }
         }
-
+        log.log(Level.INFO,"trainingWOFoldInPrefs; {0}" , trainingWOFoldInPrefs.size());
+        log.log(Level.INFO,"testPrefs; {0}" , testPrefs.size());
+        log.log(Level.INFO,"trainingWFoldInPrefs; {0}" , trainingWFoldInPrefs.size());
+        log.log(Level.INFO,"foldInPrefs; {0}" , foldInPrefs.size());
+        
         return "{Normal Recall =" +
                 buildAndEvaluateFor(dataModel, recommenderBuilder,
                         trainingWOFoldInPrefs, null, testPrefs,
