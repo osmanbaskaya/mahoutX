@@ -125,7 +125,7 @@ public class RecommenderWS {
     if (foldInUserPercentage != null) {
       KorenIRStatsWithFoldInEvaluator kirse = new KorenIRStatsWithFoldInEvaluator(
               trainingPercent, foldInUserPercentage, nUnratedItems);
-      result = kirse.evaluateFoldIn(builders.get(context), null, inMemoryDataModels.get(context), null,
+      result = kirse.evaluateFoldInRecall(builders.get(context), null, inMemoryDataModels.get(context), null,
               listSize, relevanceThreshold, evalPercent);
     } else {
       KorenIRStatsEvaluator kirse = new KorenIRStatsEvaluator(trainingPercent, nUnratedItems);
@@ -136,6 +136,31 @@ public class RecommenderWS {
     return result;
   }
 
+  @WebMethod(operationName = "evaluateRecommenderAggregateDiversity")
+  public String evaluateRecommenderAggregateDiversity(
+          @WebParam(name = "context") final String context,
+          @WebParam(name = "listSize") final int listSize,
+          @WebParam(name = "trainingPercent") final double trainingPercent,
+          @WebParam(name = "evalPercent") final double evalPercent,
+          @WebParam(name = "foldInUserPercentage") Double foldInUserPercentage)
+          throws TasteException {
+    //TODO maybe later check if no configuration exists, or no datamodel available, handle exceptions and so on...
+
+    String result;
+    if (foldInUserPercentage != null) {
+      KorenIRStatsWithFoldInEvaluator kirse = new KorenIRStatsWithFoldInEvaluator(
+              trainingPercent, foldInUserPercentage, 0);
+      result = kirse.evaluateFoldInAggregateDiversity(builders.get(context), null, inMemoryDataModels.get(context), null,
+              listSize, evalPercent);
+    } else {
+      KorenIRStatsWithFoldInEvaluator kirse = new KorenIRStatsWithFoldInEvaluator(
+              trainingPercent, foldInUserPercentage, 0);
+      result = kirse.evaluateAggregateDiversity(builders.get(context), null, inMemoryDataModels.get(context), null,
+              listSize, evalPercent);
+    }
+    log.log(Level.INFO, "Aggregate Diversity result: {0}", result);
+    return result;
+  }
   @WebMethod(operationName = "evaluateRecommenderMae")
   public String evaluateRecommenderMae(
           @WebParam(name = "context") final String context,

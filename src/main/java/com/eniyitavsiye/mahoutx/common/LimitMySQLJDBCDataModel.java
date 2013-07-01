@@ -154,7 +154,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
                 if (!firstTime) {
 		    offset += limit;
 		}
-            } while (currentBlockCount < totalBlockCount || skipped || firstTime);
+            } while (currentBlockCount <= totalBlockCount || skipped || firstTime);
             if (!prefs.isEmpty()) {
                 result.put(currentUserID, new GenericUserPreferenceArray(prefs));
 	    }
