@@ -5,7 +5,6 @@ import com.google.common.collect.Lists;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.common.TopK;
 import org.apache.mahout.cf.taste.eval.DataModelBuilder;
-import org.apache.mahout.cf.taste.eval.IRStatistics;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
 import org.apache.mahout.cf.taste.impl.common.*;
 import org.apache.mahout.cf.taste.impl.model.GenericDataModel;
@@ -17,6 +16,7 @@ import org.apache.mahout.cf.taste.model.Preference;
 import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.apache.mahout.cf.taste.recommender.CandidateItemsStrategy;
 import org.apache.mahout.cf.taste.recommender.IDRescorer;
+import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 
 import java.util.*;
@@ -49,7 +49,7 @@ public class KorenIRStatsWithFoldInEvaluator {
         this.foldInUserPercentage = foldInUserPercentage;
     }
 
-    public String evaluateFoldIn(
+    public String evaluateFoldInRecall(
             RecommenderBuilder recommenderBuilder,
             DataModelBuilder dataModelBuilder,
             DataModel dataModel,
@@ -83,16 +83,138 @@ public class KorenIRStatsWithFoldInEvaluator {
         }
 
         return "{Normal Recall =" +
-                buildAndEvaluateFor(dataModel, recommenderBuilder,
+                buildAndEvaluateRecallFor(dataModel, recommenderBuilder,
                         trainingWOFoldInPrefs, null, testPrefs,
                         relevanceThreshold, at) + ", " +
                 "Fold-in Recall = " +
-                buildAndEvaluateFor(dataModel, recommenderBuilder,
+                buildAndEvaluateRecallFor(dataModel, recommenderBuilder,
                         trainingWFoldInPrefs, foldInPrefs, testPrefs,
                         relevanceThreshold, at) + "}";
     }
 
-    private double buildAndEvaluateFor(DataModel dataModel,
+  public String evaluateAggregateDiversity(
+          RecommenderBuilder recommenderBuilder,
+          DataModelBuilder dataModelBuilder,
+          DataModel dataModel,
+          IDRescorer rescorer,
+          int at,
+          double evaluationPercentage) throws TasteException {
+
+
+    int numUsers = dataModel.getNumUsers();
+    FastByIDMap<PreferenceArray> trainingWOFoldInPrefs = new FastByIDMap<>(
+            1 + (int) (evaluationPercentage * numUsers));
+    FastByIDMap<PreferenceArray> trainingWFoldInPrefs = new FastByIDMap<>(
+            1 + (int) (evaluationPercentage * numUsers));
+    FastByIDMap<PreferenceArray> foldInPrefs = new FastByIDMap<>(
+            1 + (int) (evaluationPercentage * numUsers));
+    FastByIDMap<PreferenceArray> testPrefs = new FastByIDMap<>(
+            1 + (int) (evaluationPercentage * numUsers));
+
+
+    log.log(Level.INFO,  "Starting to divide users into training and test...");
+
+    LongPrimitiveIterator it = dataModel.getUserIDs();
+    while (it.hasNext()) {
+      long userID = it.nextLong();
+      if (random.nextDouble() < evaluationPercentage) {
+        splitOneUsersPrefs(trainingPercentage,
+                trainingWOFoldInPrefs, trainingWFoldInPrefs, testPrefs, foldInPrefs,
+                userID, dataModel, foldInUserPercentage);
+      }
+    }
+
+    return "{Normal Aggregate Diversity =" +
+            buildAndEvaluateAggrDiversityFor(dataModel, recommenderBuilder,
+                    trainingWOFoldInPrefs, null, testPrefs,
+                    at) + "}";
+  }
+
+    public String evaluateFoldInAggregateDiversity(
+          RecommenderBuilder recommenderBuilder,
+          DataModelBuilder dataModelBuilder,
+          DataModel dataModel,
+          IDRescorer rescorer,
+          int at,
+          double evaluationPercentage) throws TasteException {
+
+
+
+      int numUsers = dataModel.getNumUsers();
+      FastByIDMap<PreferenceArray> trainingWOFoldInPrefs = new FastByIDMap<>(
+              1 + (int) (evaluationPercentage * numUsers));
+      FastByIDMap<PreferenceArray> trainingWFoldInPrefs = new FastByIDMap<>(
+              1 + (int) (evaluationPercentage * numUsers));
+      FastByIDMap<PreferenceArray> foldInPrefs = new FastByIDMap<>(
+              1 + (int) (evaluationPercentage * numUsers));
+      FastByIDMap<PreferenceArray> testPrefs = new FastByIDMap<>(
+              1 + (int) (evaluationPercentage * numUsers));
+
+
+      log.log(Level.INFO,  "Starting to divide users into training and test...");
+
+      LongPrimitiveIterator it = dataModel.getUserIDs();
+      while (it.hasNext()) {
+        long userID = it.nextLong();
+        if (random.nextDouble() < evaluationPercentage) {
+          splitOneUsersPrefs(trainingPercentage,
+                  trainingWOFoldInPrefs, trainingWFoldInPrefs, testPrefs, foldInPrefs,
+                  userID, dataModel, foldInUserPercentage);
+        }
+      }
+
+      return "{Normal Aggregate Diversity =" +
+              buildAndEvaluateAggrDiversityFor(dataModel, recommenderBuilder,
+                      trainingWOFoldInPrefs, null, testPrefs,
+                      at) + ", " +
+              "Fold-in Aggregate Diversity = " +
+              buildAndEvaluateAggrDiversityFor(dataModel, recommenderBuilder,
+                      trainingWFoldInPrefs, foldInPrefs, testPrefs,
+                      at) + "}";
+    }
+
+    private String buildAndEvaluateAggrDiversityFor(DataModel dataModel,
+                                     RecommenderBuilder recommenderBuilder,
+                                     FastByIDMap<PreferenceArray> trainingPrefs,
+                                     FastByIDMap<PreferenceArray> foldIn,
+                                     FastByIDMap<PreferenceArray> testPrefs,
+                                     int at) throws TasteException {
+
+    log.log(Level.INFO,  "Training size: {0}, Test size: {1}.",
+            new Object[] {trainingPrefs.size(), testPrefs.size()});
+
+    DataModel trainingDataModel = new GenericDataModel(trainingPrefs);
+
+    log.log(Level.INFO, "Building model...");
+    final Recommender recommender = recommenderBuilder.buildRecommender(trainingDataModel);
+    log.log(Level.INFO, "Model build complete, finding relevant items...");
+
+    if (foldIn != null) {
+      LongPrimitiveIterator iterator = foldIn.keySetIterator();
+      OnlineSVDRecommender onlineSVDRecommender = (OnlineSVDRecommender) recommender;
+      while (iterator.hasNext()) {
+        long userID = iterator.next();
+        PreferenceArray prefs = foldIn.get(userID);
+        onlineSVDRecommender.updateUserWithFoldIn(userID, prefs);
+      }
+    }
+
+    FastIDSet uniqueItems = new FastIDSet();
+
+    LongPrimitiveIterator iterator = testPrefs.keySetIterator();
+    while (iterator.hasNext()) {
+      long userID = iterator.nextLong();
+      List<RecommendedItem> items = recommender.recommend(userID, at);
+      for (RecommendedItem item : items) {
+        uniqueItems.add(item.getItemID());
+      }
+    }
+    return String.format("#users:%d,#items:%d,#uniqueItems:%d",
+            testPrefs.size(), trainingDataModel.getNumItems(), uniqueItems.size());
+
+  }
+
+    private double buildAndEvaluateRecallFor(DataModel dataModel,
          RecommenderBuilder recommenderBuilder,
          FastByIDMap<PreferenceArray> trainingPrefs,
          FastByIDMap<PreferenceArray> foldIn,
@@ -228,10 +350,10 @@ public class KorenIRStatsWithFoldInEvaluator {
             foldInUser = true;
         }
 
-        List<Preference> oneUserTrainingWOFoldInPrefs = null;
-        List<Preference> oneUserTrainingWFoldInPrefs = null;
-        List<Preference> oneUserTestPrefs = null;
-        List<Preference> oneUserFoldInPrefs = null;
+        List<Preference> oneUserTrainingWOFoldInPrefs = Lists.newArrayListWithCapacity(3);
+        List<Preference> oneUserTrainingWFoldInPrefs = Lists.newArrayListWithCapacity(3);
+        List<Preference> oneUserTestPrefs = Lists.newArrayListWithCapacity(3);
+        List<Preference> oneUserFoldInPrefs = Lists.newArrayListWithCapacity(3);
 
 
         PreferenceArray prefs = dataModel.getPreferencesFromUser(userID);
@@ -242,39 +364,23 @@ public class KorenIRStatsWithFoldInEvaluator {
 
             if (foldInUser) {
                 if (isTrainingPref) {
-
-                    if (oneUserTrainingWOFoldInPrefs == null) {
-                        oneUserTrainingWOFoldInPrefs = Lists.newArrayListWithCapacity(3);
-                    }
                     oneUserTrainingWOFoldInPrefs.add(newPref);
 
-                    if (oneUserFoldInPrefs == null) {
-                        oneUserFoldInPrefs =  Lists.newArrayList();
-                    }
                     oneUserFoldInPrefs.add(newPref);
                 } else {
 
-                    if (oneUserTestPrefs == null) {
-                        oneUserTestPrefs = Lists.newArrayListWithCapacity(3);
-                    }
                     oneUserTestPrefs.add(newPref);
                 }
             } else { //non-foldin user
-                if (oneUserTrainingWOFoldInPrefs == null) {
-                    oneUserTrainingWOFoldInPrefs = Lists.newArrayListWithCapacity(3);
-                }
                 oneUserTrainingWOFoldInPrefs.add(newPref);
 
-                if (oneUserTrainingWFoldInPrefs == null) {
-                    oneUserTrainingWFoldInPrefs =  Lists.newArrayList();
-                }
                 oneUserTrainingWFoldInPrefs.add(newPref);
             }
         }
 
 
         if (foldInUser) {
-            if (oneUserTrainingWOFoldInPrefs == null || oneUserFoldInPrefs==null || oneUserTestPrefs==null) {
+            if (oneUserTrainingWOFoldInPrefs.isEmpty() || oneUserFoldInPrefs.isEmpty() || oneUserTestPrefs.isEmpty()) {
                 return;
             }
 
