@@ -154,13 +154,14 @@ public class RecommenderWS {
               listSize, evalPercent);
     } else {
       KorenIRStatsWithFoldInEvaluator kirse = new KorenIRStatsWithFoldInEvaluator(
-              trainingPercent, foldInUserPercentage, 0);
+              trainingPercent, 0, 0);
       result = kirse.evaluateAggregateDiversity(builders.get(context), null, inMemoryDataModels.get(context), null,
               listSize, evalPercent);
     }
     log.log(Level.INFO, "Aggregate Diversity result: {0}", result);
     return result;
   }
+
   @WebMethod(operationName = "evaluateRecommenderMae")
   public String evaluateRecommenderMae(
           @WebParam(name = "context") final String context,

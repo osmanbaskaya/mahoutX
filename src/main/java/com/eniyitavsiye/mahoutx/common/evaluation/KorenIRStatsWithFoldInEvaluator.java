@@ -1,7 +1,9 @@
 package com.eniyitavsiye.mahoutx.common.evaluation;
 
+import com.eniyitavsiye.mahoutx.common.MutableGenericDataModel;
 import com.eniyitavsiye.mahoutx.svdextension.online.OnlineSVDRecommender;
 import com.google.common.collect.Lists;
+import org.apache.mahout.cf.taste.common.NoSuchUserException;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.common.TopK;
 import org.apache.mahout.cf.taste.eval.DataModelBuilder;
@@ -187,7 +189,7 @@ public class KorenIRStatsWithFoldInEvaluator {
     log.log(Level.INFO,  "Training size: {0}, Test size: {1}.",
             new Object[] {trainingPrefs.size(), testPrefs.size()});
 
-    DataModel trainingDataModel = new GenericDataModel(trainingPrefs);
+    DataModel trainingDataModel = new MutableGenericDataModel(trainingPrefs);
 
     log.log(Level.INFO, "Building model...");
     final Recommender recommender = recommenderBuilder.buildRecommender(trainingDataModel);
@@ -199,22 +201,31 @@ public class KorenIRStatsWithFoldInEvaluator {
       while (iterator.hasNext()) {
         long userID = iterator.next();
         PreferenceArray prefs = foldIn.get(userID);
+        for (Preference pref : prefs) {
+          onlineSVDRecommender.userPreferenceChanged(pref.getUserID(), pref.getItemID(), pref.getValue());
+        }
+
         onlineSVDRecommender.updateUserWithFoldIn(userID, prefs);
       }
     }
 
     FastIDSet uniqueItems = new FastIDSet();
 
+    int noSuchUser = 0;
     LongPrimitiveIterator iterator = testPrefs.keySetIterator();
     while (iterator.hasNext()) {
       long userID = iterator.nextLong();
-      List<RecommendedItem> items = recommender.recommend(userID, at);
-      for (RecommendedItem item : items) {
-        uniqueItems.add(item.getItemID());
+      try {
+        List<RecommendedItem> items = recommender.recommend(userID, at);
+        for (RecommendedItem item : items) {
+          uniqueItems.add(item.getItemID());
+        }
+      } catch (NoSuchUserException e) {
+        noSuchUser++;
       }
     }
-    return String.format("#users:%d,#items:%d,#uniqueItems:%d",
-            testPrefs.size(), trainingDataModel.getNumItems(), uniqueItems.size());
+    return String.format("#users:%d(nosuch:%d),#items:%d,#uniqueItems:%d",
+            testPrefs.size(), noSuchUser, trainingDataModel.getNumItems(), uniqueItems.size());
 
   }
 
