@@ -1,13 +1,24 @@
 package com.eniyitavsiye.mahoutx.webservice;
 
-import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
-import com.eniyitavsiye.mahoutx.common.LimitMySQLJDBCDataModel;
-import com.eniyitavsiye.mahoutx.common.MutableGenericDataModel;
-import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsEvaluator;
-import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsWithFoldInEvaluator;
-import com.eniyitavsiye.mahoutx.db.DBUtil;
-import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
-import com.eniyitavsiye.mahoutx.svdextension.online.OnlineSVDRecommender;
+import static com.eniyitavsiye.mahoutx.common.DataModelUtilities.getTotalPreferenceCount;
+import static com.eniyitavsiye.mahoutx.common.Util.asArray;
+
+import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.jws.WebMethod;
+import javax.jws.WebParam;
+import javax.jws.WebService;
+
 import org.apache.mahout.cf.taste.common.NoSuchItemException;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.common.TopK;
@@ -40,18 +51,15 @@ import org.apache.mahout.cf.taste.similarity.ItemSimilarity;
 import org.apache.mahout.cf.taste.similarity.UserSimilarity;
 import org.apache.mahout.common.distance.CosineDistanceMeasure;
 
-import javax.jws.WebMethod;
-import javax.jws.WebParam;
-import javax.jws.WebService;
-import java.io.File;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import static com.eniyitavsiye.mahoutx.common.Util.*;
-import static com.eniyitavsiye.mahoutx.common.DataModelUtilities.*;
+import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
+import com.eniyitavsiye.mahoutx.common.LimitMySQLJDBCDataModel;
+import com.eniyitavsiye.mahoutx.common.MutableGenericDataModel;
+import com.eniyitavsiye.mahoutx.common.Util;
+import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsEvaluator;
+import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsWithFoldInEvaluator;
+import com.eniyitavsiye.mahoutx.db.DBUtil;
+import com.eniyitavsiye.mahoutx.svdextension.FactorizationCachingFactorizer;
+import com.eniyitavsiye.mahoutx.svdextension.online.OnlineSVDRecommender;
 
 @WebService(serviceName = "RecommenderWS")
 public class RecommenderWS {
@@ -178,7 +186,77 @@ public class RecommenderWS {
       return ex.getMessage();
     }
   }
+  @WebMethod(operationName = "runGeneralExperiment")
+	public String runGeneralExperiment(
+			@WebParam(name = "context") final String context,
+			@WebParam(name = "nUnratedItems") final int nUnratedItems,
+			@WebParam(name = "listSize") final int listSize,
+			@WebParam(name = "trainingPercent") final double trainingPercent,
+			@WebParam(name = "relevanceThreshold") final double relevanceThreshold,
+			@WebParam(name = "evalPercent") final double evalPercent,
+			@WebParam(name = "foldInUserPercentage") Double foldInUserPercentage,
+			@WebParam(name = "nFactorsArrayString") String nFactorsArrayString,
+			@WebParam(name = "nIterationsArrayString") String nIterationsArrayString,
+			@WebParam(name = "foldInIterationArrayString") String foldInIterationArrayString,
+			@WebParam(name = "maxRep") int maxRep)
+			throws TasteException {
+		// TODO maybe later check if no configuration exists, or no datamodel
+		// available, handle exceptions and so on...
+		log.log(Level.INFO, "runGeneralExperiment method starts");
+		HashMap<String, String> results = new HashMap<String, String>();
+		int[] nFactorsArray = Util.getIntArray(nFactorsArrayString);
+		for (int nFactors : nFactorsArray) {
+			int[] nIterationsArray = Util.getIntArray(nIterationsArrayString);
+			for (int nIterations : nIterationsArray) {
+				int[] foldInIterationArray = Util.getIntArray(foldInIterationArrayString);
+				for (int foldInIteration : foldInIterationArray ) {
+					for (int rep = 0; rep < maxRep; rep++) {
+						log.log(Level.INFO, "\n nFactors:" + nFactors +" / "+Arrays.toString(nFactorsArray)
+								+ "\n nIterations:" + nIterations +" / "+Arrays.toString(nIterationsArray)
+								+ "\n foldInIteration:" + foldInIteration+" / "+Arrays.toString(foldInIterationArray)
+								+ "\n rep:" + rep+" / "+maxRep);
+						setModelConfiguration("imdbdata", null, nFactors,
+								nIterations, null, foldInIteration, null, null);
+						KorenIRStatsWithFoldInEvaluator kirse = new KorenIRStatsWithFoldInEvaluator(
+								trainingPercent, foldInUserPercentage,
+								nUnratedItems);
+						String recallResult = kirse.evaluateFoldInRecall(
+								builders.get(context), null,
+								inMemoryDataModels.get(context), null,
+								listSize, relevanceThreshold, evalPercent);
+						log.log(Level.INFO, "Recall:" + recallResult);
 
+						kirse = new KorenIRStatsWithFoldInEvaluator(
+								trainingPercent, foldInUserPercentage, 0);
+						String diversityResult = kirse
+								.evaluateFoldInAggregateDiversity(
+										builders.get(context), null,
+										inMemoryDataModels.get(context), null,
+										listSize, evalPercent);
+						log.log(Level.INFO, "Diversity:" + diversityResult);
+
+						RecommenderEvaluator evaluator = new AverageAbsoluteDifferenceRecommenderEvaluator();
+						double score = evaluator.evaluate(
+								builders.get(context), null,
+								inMemoryDataModels.get(context),
+								trainingPercent, evalPercent);
+						log.log(Level.INFO, "MAE:" + score);
+						results.put(nFactors + ":" + nIterations + ":"
+								+ foldInIteration + ":" + rep, recallResult
+								+ ":" + diversityResult + ":" + score);
+					}
+				}
+			}
+		}
+
+		log.log(Level.INFO, "runGeneralExperiment results starts");
+		for (String key : results.keySet()) {
+			String result = results.get(key);
+			log.log(Level.INFO, key + ":" + result);
+		}
+		log.log(Level.INFO, "runGeneralExperiment results ends");
+		return "done";
+	}
   @WebMethod(operationName = "buildModel")
   public String buildModel(
           @WebParam(name = "context") String context) {
