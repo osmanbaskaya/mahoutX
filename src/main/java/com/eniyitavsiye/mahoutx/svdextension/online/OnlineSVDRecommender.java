@@ -103,7 +103,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
       userFeatures[i] = rGen.nextGaussian()*0.3;
     }
 
-    log.log(Level.INFO, "Folding in with preferences {0}.", ratings);
+//    log.log(Level.INFO, "Folding in with preferences {0}.", ratings);
 
     Factorization fact = factorizationCachingFactorizer.getCachedFactorization();
     double lr = alpha;
@@ -345,9 +345,9 @@ public class OnlineSVDRecommender extends AbstractRecommender {
 
     log.log(Level.INFO, "Beginning generation of recommendations for user : {0}", userID);
     PreferenceArray preferencesFromUser = tryToGetFreshPreferences(userID);
-    log.log(Level.INFO, "User preferences: {0}", preferencesFromUser);
+//    log.log(Level.INFO, "User preferences: {0}", preferencesFromUser);
     FastIDSet possibleItemIDs = getAllOtherItems(userID, preferencesFromUser);
-    log.log(Level.INFO, "Candidtate items for user: {0}", possibleItemIDs);
+//    log.log(Level.INFO, "Candidtate items for user: {0}", possibleItemIDs);
 
     List<RecommendedItem> topItems = TopItems.getTopItems(howMany, possibleItemIDs.iterator(), rescorer,
             new Estimator<Long>() {
@@ -356,7 +356,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
                 return estimatePreference(userID, itemID);
               }
             });
-    log.log(Level.INFO, "Recommendations are: {0}", topItems);
+//    log.log(Level.INFO, "Recommendations are: {0}", topItems);
 
     return topItems;
   }
