@@ -215,7 +215,7 @@ public class RecommenderWS {
 								+ "\n nIterations:" + nIterations +" / "+Arrays.toString(nIterationsArray)
 								+ "\n foldInIteration:" + foldInIteration+" / "+Arrays.toString(foldInIterationArray)
 								+ "\n rep:" + rep+" / "+maxRep);
-						setModelConfiguration("imdbdata", null, nFactors,
+						setModelConfiguration(context, null, nFactors,
 								nIterations, null, foldInIteration, null, null);
 						KorenIRStatsWithFoldInEvaluator kirse = new KorenIRStatsWithFoldInEvaluator(
 								trainingPercent, foldInUserPercentage,
