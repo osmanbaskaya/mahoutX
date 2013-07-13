@@ -13,8 +13,6 @@ import org.apache.mahout.cf.taste.impl.model.jdbc.MySQLJDBCDataModel;
 import org.apache.mahout.cf.taste.model.Preference;
 import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.apache.mahout.common.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.BufferedReader;
@@ -24,12 +22,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
-import org.apache.mahout.cf.taste.impl.model.GenericItemPreferenceArray;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 
     private static final long serialVersionUID = -2895240379301248474L;
-    private static final Logger log = LoggerFactory.getLogger(LimitMySQLJDBCDataModel.class);
+    private static final Logger log = Logger.getLogger(LimitMySQLJDBCDataModel.class.getName());
     private final DataSource dataSource;
     private String userIDColumn;
     private String itemIDColumn;
@@ -75,7 +74,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
 	    int totalBlockCount = 10;
             int limit = maxUserID / totalBlockCount;
 
-            log.info("before 500000 allocation: {}.", printFreeMemory());
+            log.log(Level.INFO, "before 500000 allocation: {0}.", printFreeMemory());
             FastByIDMap<PreferenceArray> result = new FastByIDMap<>(500_000);
             List<Preference> prefs = Lists.newArrayList();
             long currentUserID = -1;
@@ -113,7 +112,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
                                 + " ORDER BY " + userIDColumn;
                     }
 
-                    log.info("Executing SQL query (offset = {}) : \n{}", offset, query.substring(query.indexOf("WHERE")));
+                    log.log(Level.INFO, "Executing SQL query (offset = {0}) : \n{1}", new Object[] { offset, query.substring(query.indexOf("WHERE"))} );
                     rs = stmt.executeQuery(query);
                     //log.info("Query executed. Current state of memory: {}", printFreeMemory());
                     int blockUserCount = 0;
@@ -145,10 +144,10 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
                     userCount += blockUserCount;
                     totalRowCount += counter;
 
-                    log.info("\nblock:{}\n#users so far = {}, #block users = {},#total rows = {}, #block row = {}.",
+                    log.log(Level.INFO, "\nblock:{0}\n#users so far = {1}, #block users = {2},#total rows = {3}, #block row = {4}.",
                             new Object[]{ currentBlockCount, userCount, blockUserCount, totalRowCount, counter });
 
-                    log.info("\nBlock Time = {} (avg={}) secs with avg {} ms per row.",
+                    log.log(Level.INFO, "\nBlock Time = {0} (avg={1}) secs with avg {2} ms per row.",
                             new Object[]{ timePassedBlock, avg.getAverage(), avgPerLine.getAverage() });
                 }
                 if (!firstTime) {
@@ -162,7 +161,7 @@ public class LimitMySQLJDBCDataModel extends MySQLJDBCDataModel {
             return result;
 
         } catch (SQLException sqle) {
-            log.info("Exception while exporting all data", sqle);
+            log.log(Level.SEVERE, "Exception while exporting all data", sqle);
             throw new TasteException(sqle);
         } finally {
             IOUtils.quietClose(rs, stmt, conn);
