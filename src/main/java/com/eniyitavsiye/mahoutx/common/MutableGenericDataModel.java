@@ -14,6 +14,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 import com.google.common.collect.Lists;
 import org.apache.mahout.cf.taste.common.NoSuchItemException;
@@ -27,14 +29,13 @@ import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.model.Preference;
 import org.apache.mahout.cf.taste.model.PreferenceArray;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 
 public final class MutableGenericDataModel extends AbstractDataModel {
 
-  private static final Logger log = LoggerFactory.getLogger(MutableGenericDataModel.class);
+  private static final Logger log = Logger.getLogger(MutableGenericDataModel.class.getName());
+
 
   private long[] userIDs;
   private final FastByIDMap<PreferenceArray> preferenceFromUsers;
@@ -71,10 +72,10 @@ public final class MutableGenericDataModel extends AbstractDataModel {
         }
       }
       if (++currentCount % 10000 == 0) {
-        log.info("Processed {} users", currentCount);
+        log.log(Level.INFO, "Processed {0} users", currentCount);
       }
     }
-    log.info("Processed {} users", currentCount);
+      log.log(Level.INFO, "Processed {0} users", currentCount);
 
     setMinPreference(minPrefValue);
     setMaxPreference(maxPrefValue);
