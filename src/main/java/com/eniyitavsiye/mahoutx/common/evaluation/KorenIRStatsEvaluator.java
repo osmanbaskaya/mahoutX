@@ -1,8 +1,8 @@
 package com.eniyitavsiye.mahoutx.common.evaluation;
 
+import com.eniyitavsiye.mahoutx.common.TopK;
 import com.google.common.collect.Lists;
 import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.common.TopK;
 import org.apache.mahout.cf.taste.eval.DataModelBuilder;
 import org.apache.mahout.cf.taste.eval.IRStatistics;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
@@ -112,9 +112,9 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
                     nUnratedItems);
             candidateItems.add(pref.getItemID());
 
-            TopK<Long> topN = new TopK<>(at, new Comparator<Long>() {
+            TopK<Long> topN = new TopK<Long>(at) {
                 @Override
-                public int compare(Long o1, Long o2) {
+                protected boolean lessThan(Long o1, Long o2) {
                     float r1;
                     float r2;
                     try {
@@ -127,21 +127,15 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
                     } catch (TasteException e) {
                         r2 = 0;
                     }
-                    if (r1 < r2) {
-                        return -1;
-                    } else if (r1 > r2) {
-                        return 1;
-                    } else {
-                        return 0;
-                    }
+                    return r1 < r2;
                 }
-            });
+            };
 
             for (long id : candidateItems) {
-                topN.offer(id);
+                topN.insertWithOverflow(id);
             }
 
-            int hit = topN.retrieve().contains(pref.getItemID()) ? 1 : 0;
+            int hit = topN.getElemsAsList().contains(pref.getItemID()) ? 1 : 0;
             recall.addDatum(hit);
 
             float currentPercent = (float) i / nRelevantPrefs;

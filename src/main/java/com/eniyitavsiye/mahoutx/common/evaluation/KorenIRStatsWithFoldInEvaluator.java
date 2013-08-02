@@ -1,11 +1,11 @@
 package com.eniyitavsiye.mahoutx.common.evaluation;
 
 import com.eniyitavsiye.mahoutx.common.MutableGenericDataModel;
+import com.eniyitavsiye.mahoutx.common.TopK;
 import com.eniyitavsiye.mahoutx.svdextension.online.OnlineSVDRecommender;
 import com.google.common.collect.Lists;
 import org.apache.mahout.cf.taste.common.NoSuchUserException;
 import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.common.TopK;
 import org.apache.mahout.cf.taste.eval.DataModelBuilder;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
 import org.apache.mahout.cf.taste.impl.common.*;
@@ -285,9 +285,9 @@ public class KorenIRStatsWithFoldInEvaluator {
                     nUnratedItems);
             candidateItems.add(pref.getItemID());
 
-            TopK<Long> topN = new TopK<>(at, new Comparator<Long>() {
+            TopK<Long> topN = new TopK<Long>(at) {
                 @Override
-                public int compare(Long o1, Long o2) {
+                protected boolean lessThan(Long o1, Long o2) {
                     float r1;
                     float r2;
                     try {
@@ -300,21 +300,15 @@ public class KorenIRStatsWithFoldInEvaluator {
                     } catch (TasteException e) {
                         r2 = 0;
                     }
-                    if (r1 < r2) {
-                        return -1;
-                    } else if (r1 > r2) {
-                        return 1;
-                    } else {
-                        return 0;
-                    }
+                    return r1 < r2;
                 }
-            });
+            };
 
             for (long id : candidateItems) {
-                topN.offer(id);
+                topN.insertWithOverflow(id);
             }
 
-            int hit = topN.retrieve().contains(pref.getItemID()) ? 1 : 0;
+            int hit = topN.getElemsAsList().contains(pref.getItemID()) ? 1 : 0;
             recall.addDatum(hit);
 
             float currentPercent = (float) i / nRelevantPrefs;

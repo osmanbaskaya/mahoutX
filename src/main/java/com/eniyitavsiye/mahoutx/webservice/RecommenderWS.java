@@ -19,9 +19,9 @@ import javax.jws.WebMethod;
 import javax.jws.WebParam;
 import javax.jws.WebService;
 
+import com.eniyitavsiye.mahoutx.common.*;
 import org.apache.mahout.cf.taste.common.NoSuchItemException;
 import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.common.TopK;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
 import org.apache.mahout.cf.taste.eval.RecommenderEvaluator;
 import org.apache.mahout.cf.taste.example.kddcup.track1.svd.ParallelArraysSGDFactorizer;
@@ -34,10 +34,7 @@ import org.apache.mahout.cf.taste.impl.neighborhood.ThresholdUserNeighborhood;
 import org.apache.mahout.cf.taste.impl.recommender.AllUnknownItemsCandidateItemsStrategy;
 import org.apache.mahout.cf.taste.impl.recommender.GenericItemBasedRecommender;
 import org.apache.mahout.cf.taste.impl.recommender.GenericUserBasedRecommender;
-import org.apache.mahout.cf.taste.impl.recommender.svd.ALSWRFactorizer;
-import org.apache.mahout.cf.taste.impl.recommender.svd.ExpectationMaximizationSVDFactorizer;
-import org.apache.mahout.cf.taste.impl.recommender.svd.Factorization;
-import org.apache.mahout.cf.taste.impl.recommender.svd.Factorizer;
+import org.apache.mahout.cf.taste.impl.recommender.svd.*;
 import org.apache.mahout.cf.taste.impl.similarity.CachingItemSimilarity;
 import org.apache.mahout.cf.taste.impl.similarity.CachingUserSimilarity;
 import org.apache.mahout.cf.taste.impl.similarity.UncenteredCosineSimilarity;
@@ -51,10 +48,6 @@ import org.apache.mahout.cf.taste.similarity.ItemSimilarity;
 import org.apache.mahout.cf.taste.similarity.UserSimilarity;
 import org.apache.mahout.common.distance.CosineDistanceMeasure;
 
-import com.eniyitavsiye.mahoutx.common.FilterIDsRescorer;
-import com.eniyitavsiye.mahoutx.common.LimitMySQLJDBCDataModel;
-import com.eniyitavsiye.mahoutx.common.MutableGenericDataModel;
-import com.eniyitavsiye.mahoutx.common.Util;
 import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsEvaluator;
 import com.eniyitavsiye.mahoutx.common.evaluation.KorenIRStatsWithFoldInEvaluator;
 import com.eniyitavsiye.mahoutx.db.DBUtil;
@@ -403,14 +396,20 @@ public class RecommenderWS {
         log.log(Level.INFO, "buildItemSimilarityMatrix starts with {0} factorizer.", fn);
         Factorizer factorizer;
         switch (fn) {
-          case "ExpectationMaximizationSVDFactorizer":
-            factorizer = new ExpectationMaximizationSVDFactorizer(dataModel, nFactors, nIterations);
+          case "ParallelArraysSGDFactorizer":
+            factorizer = new ParallelArraysSGDFactorizer(dataModel, nFactors, nIterations);
+            break;
+          case "SVDPlusPlusFactorizer":
+            factorizer = new SVDPlusPlusFactorizer(dataModel, nFactors, nIterations);
+            break;
+          case "RatingSGDFactorizer":
+            factorizer = new RatingSGDFactorizer(dataModel, nFactors, nIterations);
             break;
           case "ALSWRFactorizer":
             factorizer = new ALSWRFactorizer(dataModel, nFactors, 0.005, nIterations);
             break;
           default:
-            factorizer = new ParallelArraysSGDFactorizer(dataModel, nFactors, nIterations);
+            factorizer = new ParallelSGDFactorizer(dataModel, nFactors, 0.005, nIterations);
             break;
         }
         FactorizationCachingFactorizer cachingFactorizer =
@@ -725,7 +724,8 @@ public class RecommenderWS {
     final Factorization factorization = cachingFactorizer.getCachedFactorization();
     Iterable<Entry<Long, Integer>> userIDMappings = factorization.getItemIDMappings();
 
-    TopK<Long> topk = new TopK<>(20, new Comparator<Long>() {
+    TopK<Long> topk = new TopK<Long>(20) {
+
       private double similarity(long i, long j) {
         try {
           return CosineDistanceMeasure.distance(factorization.getItemFeatures(i), factorization.getItemFeatures(j));
@@ -736,24 +736,19 @@ public class RecommenderWS {
       }
 
       @Override
-      public int compare(Long o1, Long o2) {
+      public boolean lessThan(Long o1, Long o2) {
         double sim1 = similarity(itemId, o1);
         double sim2 = similarity(itemId, o2);
 
-        if (sim1 < sim2) {
-          return -1;
-        } else if (sim1 > sim2) {
-          return 1;
-        } else {
-          return 0;
-        }
+        return sim1 < sim2;
       }
-    });
+    };
+
     for (Entry<Long, Integer> entry : userIDMappings) {
-      topk.offer(entry.getKey());
+      topk.insertWithOverflow(entry.getKey());
     }
 
-    return (Long[]) topk.retrieve().toArray();
+    return topk.getElems();
   }
 
   @WebMethod(operationName = "isBuildingInProgress")
