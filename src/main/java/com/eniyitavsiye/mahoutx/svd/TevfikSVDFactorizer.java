@@ -75,6 +75,7 @@ public class TevfikSVDFactorizer extends AbstractFactorizer {
 
         double prefInterval = dataModel.getMaxPreference() - dataModel.getMinPreference();
         defaultValue = Math.sqrt((average - prefInterval * 0.1) / numFeatures);
+        
         interval = prefInterval * 0.1 / numFeatures;
 
         for (int feature = 0; feature < numFeatures; feature++) {
@@ -88,44 +89,41 @@ public class TevfikSVDFactorizer extends AbstractFactorizer {
 
         preferences = Lists.newArrayListWithCapacity(dataModel.getNumUsers());
         getPreferences();
-/*
+
         for (int iter = 0; iter < numIterations; iter++) {
-            int vgError = 0;
-            int avgAbsError = 0;
-            for (int i = 0; i < TRAIN_SIZE; i++) {
-                user = (int) model.dataArray[i][0];
-                item = (int) model.dataArray[i][1];
+            double avgError = 0;
+            double avgAbsError = 0;
+            for (GenericPreference pref : preferences) {
+                int useridx = userIndex(pref.getUserID());
+                int itemidx = itemIndex(pref.getItemID());
                 //System.out.println(i+" "+user+" "+item);
-                error = model.dataArray[i][2] - prediction(user, item);
+                double error = pref.getValue() - predictRating(useridx, itemidx);
 
-                f = user_dev.get(user);
-                user_dev.put(user, f + gamma * (error - lambda * f));
-                f = item_dev.get(item);
-                item_dev.put(item, f + gamma * (error - lambda * f));
+                double[] temp = userVectors[useridx].clone();
 
-                ufactor = user_factor.get(user);
-                temp = ufactor.clone();
-                ifactor = item_factor.get(item);
-
-                for (j = 0; j < FACTOR_SIZE; j++) {
-                    ufactor[j] = ufactor[j] + gamma * (error * ifactor[j] - lambda * ufactor[j]);
-                    ifactor[j] = ifactor[j] + gamma * (error * temp[j] - lambda * ifactor[j]);
+                for (int j = 0; j < numFeatures; j++) {
+                    userVectors[useridx][j] = userVectors[useridx][j] + DEFAULT_LEARNING_RATE * (error * itemVectors[itemidx][j] - DEFAULT_REGULARIZATION * userVectors[useridx][j]);
+                    itemVectors[itemidx][j] = itemVectors[itemidx][j] + DEFAULT_LEARNING_RATE * (error * temp[j] - DEFAULT_REGULARIZATION * itemVectors[itemidx][j]);
                 }
-                user_factor.put(user, ufactor);
-                item_factor.put(item, ifactor);
                 avgAbsError = avgAbsError + Math.abs(error);
                 avgError = avgError + error;
                 //		if (i % 1000 == 0)
                 //			System.out.println("AvgError: "+avgAbsError/(i+1));
             }
-            avgError = avgError / TRAIN_SIZE;
-            System.out.println("AvgError (Training set): " + avgAbsError / TRAIN_SIZE);
+            avgError = avgError / preferences.size();
+            System.out.println("AvgError (Training set): " + avgAbsError / preferences.size());
         }
-*/
-
-
 
         return createFactorization(userVectors, itemVectors);
+    }
+
+    private double predictRating(int userIndex, int itemIndex) {
+        double sum = 0;
+        for (int i = 0; i < numFeatures; i++) {
+            sum = sum + userVectors[userIndex][i] * itemVectors[itemIndex][i];
+        }
+
+        return sum;
     }
 
     double getAveragePreference() throws TasteException {

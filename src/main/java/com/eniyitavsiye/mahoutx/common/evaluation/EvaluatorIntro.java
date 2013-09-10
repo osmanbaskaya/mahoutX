@@ -6,6 +6,7 @@ package com.eniyitavsiye.mahoutx.common.evaluation;
 
 
 
+import com.eniyitavsiye.mahoutx.svd.TevfikSVDFactorizer;
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.eval.RecommenderBuilder;
 import org.apache.mahout.cf.taste.eval.RecommenderEvaluator;
@@ -34,7 +35,9 @@ class EvaluatorIntro {
   public static void main(String[] args) throws Exception {
     RandomUtils.useTestSeed();
     //DataModel model = new FileDataModel(new File("/home/tevfik/Documents/workspace/datasets/ml-1m/intro.csv"));
-    DataModel model = new GroupLensDataModel(new File("/home/tevfik/Documents/workspace/datasets/ml-1m/ratings.dat"));
+    //DataModel model = new GroupLensDataModel(new File("/home/tevfik/Documents/workspace/datasets/ml-1m/ratings.dat"));
+    DataModel model = new GroupLensDataModel(new File("/home/tevfik/datasets/ml-1m/ratings.dat"));
+
     RecommenderEvaluator evaluator =
       new AverageAbsoluteDifferenceRecommenderEvaluator();
     // Build the same recommender for testing that we did last time:
@@ -46,7 +49,8 @@ class EvaluatorIntro {
      //     new NearestNUserNeighborhood(2, similarity, model);
      //   return new GenericUserBasedRecommender(model, neighborhood, similarity);
           //return new SVDRecommender(model, new FunkSVDFactorizer(model, 10, 10) );
-          return new SVDRecommender(model, new ParallelSGDFactorizer(model, 10, 1, 10) );
+          //return new SVDRecommender(model, new ParallelSGDFactorizer(model, 10, 0.02, 10) );
+          return new SVDRecommender(model, new TevfikSVDFactorizer(model, 100, 100) );
       }
     };
     // Use 70% of the data to train; test using the other 30%.
