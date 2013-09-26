@@ -75,14 +75,24 @@ public class TevfikSVDFactorizer extends AbstractFactorizer {
 
         double prefInterval = dataModel.getMaxPreference() - dataModel.getMinPreference();
         defaultValue = Math.sqrt((average - prefInterval * 0.1) / numFeatures);
-        
+
         interval = prefInterval * 0.1 / numFeatures;
 
-        for (int feature = 0; feature < numFeatures; feature++) {
-            for (int userIndex = 0; userIndex < dataModel.getNumUsers(); userIndex++) {
+        for (int userIndex = 0; userIndex < dataModel.getNumUsers(); userIndex++) {
+            userVectors[userIndex][0] = average;
+            userVectors[userIndex][1] = 0; // will store user bias
+            userVectors[userIndex][2] = 1; // corresponding item feature contains item bias
+            for (int feature = 3; feature < numFeatures; feature++) {
+
                 userVectors[userIndex][feature] = defaultValue + (random.nextDouble() - 0.5) * interval * randomNoise;
             }
-            for (int itemIndex = 0; itemIndex < dataModel.getNumItems(); itemIndex++) {
+        }
+
+        for (int itemIndex = 0; itemIndex < dataModel.getNumItems(); itemIndex++) {
+            itemVectors[itemIndex][0] = 1; // corresponding user feature contains global average
+            itemVectors[itemIndex][1] = 1; // corresponding user feature contains user bias
+            itemVectors[itemIndex][2] = 0; // will store item bias
+            for (int feature = 3; feature < numFeatures; feature++) {
                 itemVectors[itemIndex][feature] = defaultValue + (random.nextDouble() - 0.5) * interval * randomNoise;
             }
         }
@@ -99,9 +109,20 @@ public class TevfikSVDFactorizer extends AbstractFactorizer {
                 //System.out.println(i+" "+user+" "+item);
                 double error = pref.getValue() - predictRating(useridx, itemidx);
 
+
+                // adjust user bias
+                userVectors[useridx][1] +=
+                        DEFAULT_LEARNING_RATE * (error - DEFAULT_REGULARIZATION * userVectors[useridx][1]);
+
+                // adjust item bias
+                itemVectors[itemidx][2] +=
+                          DEFAULT_LEARNING_RATE * (error - DEFAULT_REGULARIZATION * itemVectors[itemidx][2]);
+
+
+
                 double[] temp = userVectors[useridx].clone();
 
-                for (int j = 0; j < numFeatures; j++) {
+                for (int j = 3; j < numFeatures; j++) {
                     userVectors[useridx][j] = userVectors[useridx][j] + DEFAULT_LEARNING_RATE * (error * itemVectors[itemidx][j] - DEFAULT_REGULARIZATION * userVectors[useridx][j]);
                     itemVectors[itemidx][j] = itemVectors[itemidx][j] + DEFAULT_LEARNING_RATE * (error * temp[j] - DEFAULT_REGULARIZATION * itemVectors[itemidx][j]);
                 }
