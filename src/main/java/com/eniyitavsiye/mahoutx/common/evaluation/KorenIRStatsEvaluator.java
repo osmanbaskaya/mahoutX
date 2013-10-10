@@ -22,26 +22,34 @@ import org.apache.mahout.cf.taste.recommender.Recommender;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.mahout.cf.taste.impl.recommender.AllSimilarItemsCandidateItemsStrategy;
+import org.apache.mahout.cf.taste.impl.recommender.SamplingCandidateItemsStrategy;
+import org.apache.mahout.cf.taste.impl.similarity.PearsonCorrelationSimilarity;
 
+/**
+ * Implements the evaluation method described in "Performance of Recommender
+ * Algorithms on Top-N Recommendation Tasks", Cremonesi, P., et al.
+ *
+ * @author tevfik
+ */
 public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
 
     private static final Logger log = Logger.getLogger(KorenIRStatsEvaluator.class.getName());
-    private static final CandidateItemsStrategy strategy = new AllUnknownItemsCandidateItemsStrategy();
-
+    private static CandidateItemsStrategy strategy;
     private Random random = new Random();
     private double trainingPercentage;
     private int nUnratedItems;
-
-    private float percentIncrement = 0.05f;
+    private float percentIncrement = 0.05f; //???
 
     public void setPercentIncrement(float percentIncrement) {
         if (percentIncrement > 1 || percentIncrement < 0) {
-            throw new IllegalArgumentException("percentIncrement should be in [0,1]: " +
-                    percentIncrement);
+            throw new IllegalArgumentException("percentIncrement should be in [0,1]: "
+                    + percentIncrement);
         }
         this.percentIncrement = percentIncrement;
     }
 
+    // Why only two parameters here???
     public KorenIRStatsEvaluator(double trainingPercentage, int nUnratedItems) {
         this.trainingPercentage = trainingPercentage;
         this.nUnratedItems = nUnratedItems;
@@ -58,14 +66,19 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
             double evaluationPercentage) throws TasteException {
 
 
+
         int numUsers = dataModel.getNumUsers();
+
+        //why do we need these initializations???
         FastByIDMap<PreferenceArray> trainingPrefs = new FastByIDMap<>(
                 1 + (int) (evaluationPercentage * numUsers));
         FastByIDMap<PreferenceArray> testPrefs = new FastByIDMap<>(
                 1 + (int) (evaluationPercentage * numUsers));
+        //FastByIDMap<PreferenceArray> allEvalPrefs = new FastByIDMap<>(
+        //        1 + (int) (evaluationPercentage * numUsers));
 
 
-        log.log(Level.INFO,  "Starting to divide users into training and test...");
+        log.log(Level.INFO, "Starting to divide preferences into training and test...");
 
         LongPrimitiveIterator it = dataModel.getUserIDs();
         while (it.hasNext()) {
@@ -74,24 +87,32 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
                 splitOneUsersPrefs(trainingPercentage, trainingPrefs, testPrefs, userID, dataModel);
             }
         }
-        log.log(Level.INFO,  "Training size: {0}, Test size: {1}.",
-                new Object[] {trainingPrefs.size(), testPrefs.size()});
+        log.log(Level.INFO, "Training size: {0}, Test size: {1}.",
+                new Object[]{trainingPrefs.size(), testPrefs.size()});
 
         DataModel trainingDataModel = new GenericDataModel(trainingPrefs);
-
+        DataModel testDataModel = new GenericDataModel(testPrefs);
+        
+        strategy = new AllUnknownItemsCandidateItemsStrategy();
+        //strategy = new AllSimilarItemsCandidateItemsStrategy(new PearsonCorrelationSimilarity(trainingDataModel));
+        //strategy = new SamplingCandidateItemsStrategy(3,3,3,500,500);
+        
         log.log(Level.INFO, "Building model...");
         final Recommender recommender = recommenderBuilder.buildRecommender(trainingDataModel);
         log.log(Level.INFO, "Model build complete, finding relevant items...");
 
+        /**
+         * Find relevant preferences from the test set. Why do we check the item
+         * id exists in training set???
+         */
         List<Preference> relevantPreferences = new ArrayList<>();
-
         LongPrimitiveIterator iterator = testPrefs.keySetIterator();
         while (iterator.hasNext()) {
             long userID = iterator.nextLong();
             PreferenceArray prefs = testPrefs.get(userID);
             for (Preference pref : prefs) {
-                if (pref.getValue() >= relevanceThreshold &&
-                        existsInData(trainingDataModel, pref.getItemID())) {
+                if (pref.getValue() >= relevanceThreshold
+                        && existsInData(trainingDataModel, pref.getItemID())) {
                     relevantPreferences.add(pref);
                 }
             }
@@ -106,15 +127,18 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
         int i = 0;
         for (Preference pref : relevantPreferences) {
             final long userID = pref.getUserID();
-
+            //     System.out.println("*******************************");
+            //both of them should be training data model
             List<Long> candidateItems = sieveNRandomItems(
-                    strategy.getCandidateItems(userID, dataModel.getPreferencesFromUser(userID), trainingDataModel),
+                    strategy.getCandidateItems(userID, trainingDataModel.getPreferencesFromUser(userID), trainingDataModel),
                     nUnratedItems);
+            //System.out.println("0000000000000000000000000000000");
             candidateItems.add(pref.getItemID());
-
+            System.out.println("can:"+candidateItems.size());
             TopK<Long> topN = new TopK<Long>(at) {
                 @Override
                 protected boolean lessThan(Long o1, Long o2) {
+                    
                     float r1;
                     float r2;
                     try {
@@ -131,22 +155,22 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
                 }
             };
 
+            
             for (long id : candidateItems) {
                 topN.insertWithOverflow(id);
             }
-
-            int hit = topN.getElemsAsList().contains(pref.getItemID()) ? 1 : 0;
+          
+            int hit = topN.getElems().contains(pref.getItemID()) ? 1 : 0;
             recall.addDatum(hit);
-
             float currentPercent = (float) i / nRelevantPrefs;
             if (currentPercent > nextPercent) {
                 nextPercent += percentIncrement;
-                log.log(Level.INFO, "Current pref : {0}/{1} (%{2}).", new Object[] { i, nRelevantPrefs, currentPercent * 100 });
+                log.log(Level.INFO, "Current pref : {0}/{1} (%{2}).", new Object[]{i, nRelevantPrefs, currentPercent * 100});
             }
 
         }
         log.log(Level.INFO, "Recall evaluation is complete, recall: {0}.", recall.getAverage());
-
+        System.out.println("count:" + recall.getCount());
         return new IRStatistics() {
             @Override
             public double getPrecision() {
@@ -208,10 +232,10 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
     }
 
     private void splitOneUsersPrefs(double trainingPercentage,
-                                    FastByIDMap<PreferenceArray> trainingPrefs,
-                                    FastByIDMap<PreferenceArray> testPrefs,
-                                    long userID,
-                                    DataModel dataModel) throws TasteException {
+            FastByIDMap<PreferenceArray> trainingPrefs,
+            FastByIDMap<PreferenceArray> testPrefs,
+            long userID,
+            DataModel dataModel) throws TasteException {
         List<Preference> oneUserTrainingPrefs = null;
         List<Preference> oneUserTestPrefs = null;
         PreferenceArray prefs = dataModel.getPreferencesFromUser(userID);
@@ -237,6 +261,4 @@ public class KorenIRStatsEvaluator implements RecommenderIRStatsEvaluator {
             }
         }
     }
-
 }
-

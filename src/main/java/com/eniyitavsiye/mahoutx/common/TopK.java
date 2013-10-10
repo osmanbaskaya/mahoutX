@@ -1,5 +1,6 @@
 package com.eniyitavsiye.mahoutx.common;
 
+import java.util.ArrayList;
 import org.apache.lucene.util.PriorityQueue;
 
 import java.util.Arrays;
@@ -12,34 +13,20 @@ public abstract class TopK<T> extends PriorityQueue<T> {
     }
 
     /**
-     * Fills an array with the elements removed from this queue in increasing
+     * Fills a list with the elements removed from this queue in increasing
      * order.
      *
-     * Note elements are removed from this queue!
+     * Note elements are removed from this queue! 0
+     *
      *
      * @return Elements of this queue in ascending order.
      */
-    @SuppressWarnings("unchecked")
-    public T[] getElems() {
-        //unsafe cast, left unchecked.
-        T[] elems = (T[]) new Object[size()];
-        for (int i = 0; i < size(); ++i) {
-            elems[i] = pop();
+    public List<T> getElems() {
+        List<T> elems = new ArrayList<T>();
+        int size = size();
+        for (int i = 0; i < size; ++i) {
+            elems.add(pop());
         }
         return elems;
     }
-
-    /**
-     * Just like {@link #getElems()}, fills a list by removing from this list in
-     * increasing order.
-     *
-     * Note elements are removed from this queue!
-     *
-     * @return List that contains elements of this queue in ascending order.
-     */
-    public List<T> getElemsAsList() {
-        return Arrays.asList(getElems());
-    }
-
 }
-

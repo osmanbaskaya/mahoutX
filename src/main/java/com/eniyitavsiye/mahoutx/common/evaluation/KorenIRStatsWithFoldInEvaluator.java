@@ -50,7 +50,18 @@ public class KorenIRStatsWithFoldInEvaluator {
         this.nUnratedItems = nUnratedItems;
         this.foldInUserPercentage = foldInUserPercentage;
     }
-
+/** 
+ * 
+ * @param recommenderBuilder
+ * @param dataModelBuilder
+ * @param dataModel
+ * @param rescorer
+ * @param at
+ * @param relevanceThreshold
+ * @param evaluationPercentage
+ * @return
+ * @throws TasteException 
+ */
     public String evaluateFoldInRecall(
             RecommenderBuilder recommenderBuilder,
             DataModelBuilder dataModelBuilder,
@@ -308,7 +319,7 @@ public class KorenIRStatsWithFoldInEvaluator {
                 topN.insertWithOverflow(id);
             }
 
-            int hit = topN.getElemsAsList().contains(pref.getItemID()) ? 1 : 0;
+            int hit = topN.getElems().contains(pref.getItemID()) ? 1 : 0;
             recall.addDatum(hit);
 
             float currentPercent = (float) i / nRelevantPrefs;

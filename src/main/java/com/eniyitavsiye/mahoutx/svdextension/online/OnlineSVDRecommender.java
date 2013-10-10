@@ -343,7 +343,7 @@ public class OnlineSVDRecommender extends AbstractRecommender {
     //Preconditions.checkArgument(howMany >= 1, "howMany must be at least 1");
     //log.debug("Recommending items for user ID '{}'", userID);
 
-    log.log(Level.INFO, "Beginning generation of recommendations for user : {0}", userID);
+  //  log.log(Level.INFO, "Beginning generation of recommendations for user : {0}", userID);
     PreferenceArray preferencesFromUser = tryToGetFreshPreferences(userID);
 //    log.log(Level.INFO, "User preferences: {0}", preferencesFromUser);
     FastIDSet possibleItemIDs = getAllOtherItems(userID, preferencesFromUser);

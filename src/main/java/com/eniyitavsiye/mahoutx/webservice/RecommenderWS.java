@@ -716,7 +716,7 @@ public class RecommenderWS {
   }
 
   @WebMethod(operationName = "getItemNearestNeighborList")
-  public Long[] getItemNearestNeighborList(
+  public List<Long> getItemNearestNeighborList(
           @WebParam(name = "context") String context,
           @WebParam(name = "itemId") final long itemId) {
 
