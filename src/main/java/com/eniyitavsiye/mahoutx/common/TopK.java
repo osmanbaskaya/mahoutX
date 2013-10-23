@@ -2,9 +2,11 @@ package com.eniyitavsiye.mahoutx.common;
 
 import java.util.ArrayList;
 import org.apache.lucene.util.PriorityQueue;
-
+import com.eniyitavsiye.mahoutx.common.Util;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 public abstract class TopK<T> extends PriorityQueue<T> {
 
@@ -26,6 +28,26 @@ public abstract class TopK<T> extends PriorityQueue<T> {
         int size = size();
         for (int i = 0; i < size; ++i) {
             elems.add(pop());
+        }
+        return elems;
+    }
+
+    //get s elements from the queue randomly
+    public List<T> getRandomElems(int s) {
+        List<T> elems = new ArrayList<T>();
+        List<Integer> randNumbers = Util.getRandomNumbers(s, size());
+        Collections.sort(randNumbers);
+        int k = 0;
+        int i = 0;
+        while (k < s){
+            if (i == randNumbers.get(k)) {
+                elems.add(pop());
+                k++;
+            }
+            else{
+                pop();
+            }
+            i++;
         }
         return elems;
     }
